@@ -11,11 +11,10 @@
       --divider:#E5E7EB;
       --yes:#00D578;
       --no:#FF453A;
-      --purple:#6366F1;
       --text:#111827;
       --text-muted:#6B7280;
       --banner-h:100px;
-      --scroll-duration:180s; /* ⇠ velocidade da rolagem */
+      --scroll-duration:540s; /* 3× mais devagar que antes */
     }
 
     #banner{position:absolute;inset:0 auto auto 0;height:var(--banner-h);
@@ -32,14 +31,12 @@
     /* CARD */
     .card{flex-shrink:0;display:flex;flex-direction:column;justify-content:center;
       min-width:380px;height:100%;padding:12px 20px;border-right:1px solid var(--divider);
-      box-sizing:border-box;position:relative;gap:2px;}
+      box-sizing:border-box;gap:2px;}
     .subtitle{font-size:12px;font-weight:600;text-transform:uppercase;
       letter-spacing:.06em;color:var(--text-muted);white-space:nowrap;
       overflow:hidden;text-overflow:ellipsis;}
     .title{font-size:16px;font-weight:700;line-height:1.25;color:var(--text);
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
-    .badge{position:absolute;top:22px;right:22px;background:var(--purple);color:#fff;
-      font-size:12px;font-weight:600;padding:3px 8px;border-radius:7px;white-space:nowrap;}
 
     .row{display:flex;gap:10px;margin-top:4px;}
     .opt{flex:1;display:flex;justify-content:space-between;align-items:center;
@@ -57,16 +54,11 @@
 
     /**************** HELPERS ****************/
     const pct = x => Math.round(parseFloat(x||0)*100);
-    const fmtVol = v => {
-      const n=parseFloat(v)||0;
-      return n>=1e6?`$${(n/1e6).toFixed(1)}M`:n>=1e3?`$${(n/1e3).toFixed(0)}K`:`$${Math.round(n)}`;
-    };
 
     const makeCard = d => `
       <div class="card">
         <div class="subtitle">${d.subtitle}</div>
         <div class="title">${d.title}</div>
-        <div class="badge">${d.vol}</div>
         <div class="row">
           <div class="opt yes"><span>${d.o1}</span><span>${d.p1}¢</span></div>
           <div class="opt no"><span>${d.o2}</span><span>${d.p2}¢</span></div>
@@ -79,39 +71,38 @@
       if(!res.ok) throw new Error(res.status);
       const raw = await res.json();
       return raw.map(m=>{
-        try {
+        try{
           const outs   = Array.isArray(m.outcomes)      ? m.outcomes      : JSON.parse(m.outcomes);
           const prices = Array.isArray(m.outcomePrices) ? m.outcomePrices : JSON.parse(m.outcomePrices);
-          if(outs.length<2 || prices.length<2) return null;
+          if(outs.length<2||prices.length<2) return null;
           return {
-            title:(m.groupItemTitle || m.question || m.slug.replace(/-/g," ")).trim(),
-            subtitle:(m.events?.[0]?.series?.[0]?.title || m.events?.[0]?.title || "Prediction"),
-            o1:outs[0], o2:outs[1],
-            p1:pct(prices[0]), p2:pct(prices[1]),
-            vol:fmtVol(m.volumeNum)
+            title:(m.groupItemTitle||m.question||m.slug.replace(/-/g," ")).trim(),
+            subtitle:(m.events?.[0]?.series?.[0]?.title||m.events?.[0]?.title||"Prediction"),
+            o1:outs[0],o2:outs[1],
+            p1:pct(prices[0]),p2:pct(prices[1])
           };
-        } catch{ return null; }
+        }catch{return null;}
       }).filter(Boolean);
     }
 
     async function build(){
-      const banner = document.getElementById('banner');
+      const banner=document.getElementById('banner');
       try{
-        const markets = await loadMarkets();
-        if(markets.length===0){
-          banner.innerHTML = '<div style="color:#B91C1C;font-weight:600;padding:10px">⚠️ Nenhum mercado disponível agora.</div>';
+        const markets=await loadMarkets();
+        if(!markets.length){
+          banner.innerHTML='<div style="color:#B91C1C;font-weight:600;padding:10px">⚠️ Nenhum mercado disponível agora.</div>';
           return;
         }
-        document.getElementById('track').innerHTML = [...markets,...markets].map(makeCard).join('');
+        document.getElementById('track').innerHTML=[...markets,...markets].map(makeCard).join('');
       }catch(e){
-        console.error('Polymarket fetch error', e);
-        banner.innerHTML = '<div style="color:#B91C1C;font-weight:600;padding:10px">⚠️ Não foi possível carregar as cotações agora.</div>';
+        console.error('Polymarket fetch error',e);
+        banner.innerHTML='<div style="color:#B91C1C;font-weight:600;padding:10px">⚠️ Não foi possível carregar as cotações agora.</div>';
       }
     }
 
     build();
-    setInterval(build, 10*60*1000);
-    document.addEventListener('visibilitychange', () => { if(!document.hidden) setTimeout(build, 1000); });
+    setInterval(build,10*60*1000);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(build,1000)});
   </script>
 </body>
 </html>
