@@ -10,7 +10,7 @@
     html,body{
       margin:0;
       padding:0;
-      background:transparent; /* let OBS show what’s behind */
+      background:transparent; /* OBS mostra o vídeo atrás */
       font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
     }
 
@@ -81,42 +81,43 @@
   <div id="banner"><div class="track" id="track"></div></div>
 
   <script>
-    /**
-     * Helper: fetch Polymarket markets & transform into lean objects
-     */
+    /** ---------- GET MARKETS (via proxy CORS) ---------- */
     async function getMarkets(){
-      const url="https://gamma-api.polymarket.com/markets?limit=50&closed=false&order_by=volume&order_direction=desc";
-      try{
-        const res=await fetch(url,{mode:"cors",headers:{Accept:"application/json"}});
-        if(!res.ok) throw new Error(res.status);
-        const data=await res.json();
-        return data.map(m=>{
+      const api = "https://gamma-api.polymarket.com/markets?limit=50&closed=false&order_by=volume&order_direction=desc";
+      const url = "https://corsproxy.io/?" + encodeURIComponent(api);
+      const res = await fetch(url);
+      if(!res.ok) throw new Error(res.status);
+      const data = await res.json();
+
+      const pct = x => Math.round(parseFloat(x||0) * 100);
+      const fmtVol = v => {
+        const n = parseFloat(v)||0;
+        if(n>=1e6) return `$${(n/1e6).toFixed(1)}M`;
+        if(n>=1e3) return `$${(n/1e3).toFixed(0)}K`;
+        return `$${Math.round(n)}`;
+      };
+
+      return data
+        .map(m=>{
           try{
-            if(!m.outcomes||!m.outcomePrices) return null;
-            const outs=JSON.parse(m.outcomes);
-            const prices=JSON.parse(m.outcomePrices);
-            if(outs.length<2||prices.length<2) return null;
-            const pct=x=>Math.round(parseFloat(x||0)*100);
-            const fmtVol=v=>{
-              const n=parseFloat(v)||0;
-              if(n>=1e6) return `$${(n/1e6).toFixed(1)}M`;
-              if(n>=1e3) return `$${(n/1e3).toFixed(0)}K`;
-              return `$${Math.round(n)}`;
-            };
+            const outs   = Array.isArray(m.outcomes)      ? m.outcomes      : JSON.parse(m.outcomes);
+            const prices = Array.isArray(m.outcomePrices) ? m.outcomePrices : JSON.parse(m.outcomePrices);
+            if(outs.length<2 || prices.length<2) return null;
+
             return {
-              title:(m.groupItemTitle||m.question||m.slug.replace(/-/g," ")).trim(),
-              subtitle:(m.events?.[0]?.series?.[0]?.title||m.events?.[0]?.title||"Prediction"),
-              o1:outs[0],o2:outs[1],
-              p1:pct(prices[0]),p2:pct(prices[1]),
+              title:(m.groupItemTitle || m.question || m.slug.replace(/-/g," ")).trim(),
+              subtitle:(m.events?.[0]?.series?.[0]?.title || m.events?.[0]?.title || "Prediction"),
+              o1:outs[0], o2:outs[1],
+              p1:pct(prices[0]), p2:pct(prices[1]),
               vol:fmtVol(m.volumeNum)
             };
-          }catch(_){return null;}
-        }).filter(Boolean);
-      }catch(e){console.error("Polymarket fetch error",e);return[];}
+          }catch(_){ return null; }
+        })
+        .filter(Boolean);
     }
 
-    /** create a card element html **/
-    const makeCard=d=>`
+    /** cria o HTML de cada card */
+    const makeCard = d => `
       <div class="card">
         <div class="subtitle">${d.subtitle}</div>
         <div class="title">${d.title}</div>
@@ -128,18 +129,20 @@
       </div>`;
 
     async function init(){
-      const markets=await getMarkets();
-      if(!markets.length) return;
-      const track=document.getElementById("track");
-      // duplicate list to guarantee continuous scroll
-      const duplicated=[...markets,...markets,...markets,...markets];
-      track.innerHTML=duplicated.map(makeCard).join("");
+      try{
+        const markets = await getMarkets();
+        if(!markets.length) return;
+        const track = document.getElementById("track");
+        const duplicated = [...markets, ...markets, ...markets];
+        track.innerHTML = duplicated.map(makeCard).join("");
+      }catch(e){ console.error("Polymarket fetch error", e); }
     }
+
     init();
-    // refresh every 10 min
-    setInterval(init,10*60*1000);
-    // if tab regains focus, refresh quick
-    document.addEventListener("visibilitychange",()=>{if(!document.hidden) setTimeout(init,1000);});
+    // atualiza a cada 10 min
+    setInterval(init, 10 * 60 * 1000);
+    // se voltar o foco, refaz rápido
+    document.addEventListener("visibilitychange", () => { if(!document.hidden) setTimeout(init, 1000); });
   </script>
 </body>
 </html>
