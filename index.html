@@ -2,13 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Live Polymarket Odds Banner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Polymarket Odds Banner</title>
   <style>
     html,body{margin:0;padding:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;}
     :root{--divider:#E5E7EB;--yes:#00D578;--no:#FF453A;--purple:#6366F1;--text:#111827;--text-muted:#6B7280;--banner-h:100px;}
-    #banner{position:absolute;top:0;left:0;right:0;height:var(--banner-h);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);background:rgba(249,250,251,.85);box-shadow:0 8px 30px rgba(0,0,0,.08);overflow:hidden;}
+    #banner{position:absolute;inset:0 auto auto 0;height:var(--banner-h);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);background:rgba(249,250,251,.85);box-shadow:0 8px 30px rgba(0,0,0,.08);overflow:hidden;}
     .track{display:flex;height:100%;align-items:center;animation:scroll 90s linear infinite;will-change:transform;}
     @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
     #banner:hover .track{animation-play-state:paused;}
@@ -25,66 +24,42 @@
   <div id="banner"><div class="track" id="track"></div></div>
 
   <script>
-    // ----------- CONFIG -----------
-    const API_URL = "https://poly-proxy.<https://poly-proxy.henriqueparadigma.workers.dev/>.workers.dev/markets?limit=50&closed=false&order_by=volume&order_direction=desc";
+    /**************** CONFIG ****************/
+    // USE ONLY YOUR WORKER – sem proxies extras
+    const API_URL = "https://poly-proxy.henriqueparadigma.workers.dev/markets?limit=50&closed=false&order_by=volume&order_direction=desc";
 
-    // lista de proxies CORS (testados 2025‑06‑12) – será tentada na ordem
-    const proxies = [
-      u => `https://cors.isomorphic-git.org/${u}`,
-      u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-      u => `https://thingproxy.freeboard.io/fetch/${u}`,
-      u => `https://jsonp.afeld.me/?url=${encodeURIComponent(u)}`
-    ];
+    /**************** HELPERS ****************/
+    const pct   = x=>Math.round(parseFloat(x||0)*100);
+    const fmtVol=v=>{const n=parseFloat(v)||0;return n>=1e6?`$${(n/1e6).toFixed(1)}M`:n>=1e3?`$${(n/1e3).toFixed(0)}K`:`$${Math.round(n)}`};
 
-    // ----------- FUNÇÕES -----------
-    const pct = x => Math.round(parseFloat(x||0)*100);
-    const fmtVol = v=>{const n=parseFloat(v)||0;return n>=1e6?`$${(n/1e6).toFixed(1)}M`:n>=1e3?`$${(n/1e3).toFixed(0)}K`:`$${Math.round(n)}`};
+    const makeCard=d=>`<div class="card"><div class="subtitle">${d.subtitle}</div><div class="title">${d.title}</div><div class="badge">${d.vol}</div><div class="row"><div class="opt yes"><span>${d.o1}</span><span>${d.p1}¢</span></div><div class="opt no"><span>${d.o2}</span><span>${d.p2}¢</span></div></div></div>`;
 
-    async function tryFetch(urls){
-      let lastErr;
-      for(const builder of urls){
-        const link = builder(API_URL);
-        try{
-          const res = await fetch(link);
-          if(!res.ok) throw new Error(res.status);
-          return await res.json();
-        }catch(e){lastErr=e;}
-      }
-      throw lastErr||new Error("All proxies failed");
-    }
-
+    /**************** CORE ****************/
     async function loadMarkets(){
-      const raw = await tryFetch(proxies);
+      const res = await fetch(API_URL); // Worker já devolve CORS *
+      if(!res.ok) throw new Error(res.status);
+      const raw = await res.json();
       return raw.map(m=>{try{
         const outs   = Array.isArray(m.outcomes)?m.outcomes:JSON.parse(m.outcomes);
         const prices = Array.isArray(m.outcomePrices)?m.outcomePrices:JSON.parse(m.outcomePrices);
         if(outs.length<2||prices.length<2) return null;
-        return {
-          title:(m.groupItemTitle||m.question||m.slug.replace(/-/g," ")).trim(),
-          subtitle:(m.events?.[0]?.series?.[0]?.title||m.events?.[0]?.title||"Prediction"),
-          o1:outs[0],o2:outs[1],
-          p1:pct(prices[0]),p2:pct(prices[1]),
-          vol:fmtVol(m.volumeNum)
-        };
+        return {title:(m.groupItemTitle||m.question||m.slug.replace(/-/g," ")).trim(),subtitle:(m.events?.[0]?.series?.[0]?.title||m.events?.[0]?.title||"Prediction"),o1:outs[0],o2:outs[1],p1:pct(prices[0]),p2:pct(prices[1]),vol:fmtVol(m.volumeNum)};
       }catch(_){return null;}}).filter(Boolean);
     }
 
-    const makeCard = d => `<div class="card"><div class="subtitle">${d.subtitle}</div><div class="title">${d.title}</div><div class="badge">${d.vol}</div><div class="row"><div class="opt yes"><span>${d.o1}</span><span>${d.p1}¢</span></div><div class="opt no"><span>${d.o2}</span><span>${d.p2}¢</span></div></div></div>`;
-
     async function build(){
+      const banner=document.getElementById('banner');
       try{
-        const markets = await loadMarkets();
-        const track = document.getElementById('track');
-        track.innerHTML = [...markets,...markets,...markets].map(makeCard).join('');
+        const markets=await loadMarkets();
+        banner.innerHTML=`<div class="track" id="track">${[...markets,...markets,...markets].map(makeCard).join('')}</div>`;
       }catch(e){
-        console.error("Polymarket fetch error", e);
-        // fallback: mostra mensagem pré-formatada
-        document.getElementById('banner').innerHTML = '<div style="color:#B91C1C;font-weight:600;padding:10px">⚠️ Não foi possível carregar as cotações agora.</div>';
+        console.error('Polymarket fetch error',e);
+        banner.innerHTML='<div style="color:#B91C1C;font-weight:600;padding:10px">⚠️ Não foi possível carregar as cotações agora.</div>';
       }
     }
 
     build();
-    setInterval(build, 10*60*1000);
+    setInterval(build,10*60*1000);
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(build,1000)});
   </script>
 </body>
