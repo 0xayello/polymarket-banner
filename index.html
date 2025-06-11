@@ -98,6 +98,10 @@
       const banner = document.getElementById('banner');
       try{
         const markets = await loadMarkets();
+        if(markets.length===0){
+          banner.innerHTML = '<div style="color:#B91C1C;font-weight:600;padding:10px">⚠️ Nenhum mercado disponível agora.</div>';
+          return;
+        }
         document.getElementById('track').innerHTML = [...markets,...markets].map(makeCard).join('');
       }catch(e){
         console.error('Polymarket fetch error', e);
