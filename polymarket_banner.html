@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Polymarket Odds Banner</title>
+  <style>
+    /* ---------- RESET & BODY ---------- */
+    html,body{
+      margin:0;
+      padding:0;
+      background:transparent; /* let OBS show what’s behind */
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
+    }
+
+    :root{
+      --bg-main:#F9FAFB;
+      --divider:#E5E7EB;
+      --yes:#00D578;
+      --no:#FF453A;
+      --purple:#6366F1;
+      --text:#111827;
+      --text-muted:#6B7280;
+      --banner-h:100px;
+    }
+
+    /* ---------- BANNER ---------- */
+    #banner{
+      position:absolute;
+      top:0;left:0;right:0;
+      height:var(--banner-h);
+      backdrop-filter:blur(20px) saturate(180%);
+      -webkit-backdrop-filter:blur(20px) saturate(180%);
+      background:rgba(249,250,251,0.85);
+      box-shadow:0 8px 30px rgba(0,0,0,.08);
+      overflow:hidden;
+    }
+
+    .track{
+      display:flex;
+      height:100%;
+      align-items:center;
+      animation:scroll 90s linear infinite;
+      will-change:transform;
+    }
+    @keyframes scroll{
+      0%{transform:translateX(0)}
+      100%{transform:translateX(-50%)}
+    }
+    #banner:hover .track{animation-play-state:paused;}
+
+    /* ---------- CARD ---------- */
+    .card{
+      flex-shrink:0;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      min-width:350px;
+      height:100%;
+      padding:12px 18px;
+      border-right:1px solid var(--divider);
+      box-sizing:border-box;
+    }
+    .subtitle{
+      font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .title{
+      font-size:16px;font-weight:700;line-height:1.3;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .badge{
+      position:absolute;top:24px;right:18px;background:var(--purple);color:#fff;font-size:12px;font-weight:600;padding:4px 9px;border-radius:8px;
+    }
+    /* outcomes */
+    .row{display:flex;gap:10px;margin-top:4px;}
+    .opt{flex:1;display:flex;justify-content:space-between;align-items:center;padding:7px 14px;border-radius:8px;font-weight:700;color:#fff;cursor:default;user-select:none;font-size:15px;}
+    .yes{background:var(--yes);} .no{background:var(--no);}  
+  </style>
+</head>
+<body>
+  <div id="banner"><div class="track" id="track"></div></div>
+
+  <script>
+    /**
+     * Helper: fetch Polymarket markets & transform into lean objects
+     */
+    async function getMarkets(){
+      const url="https://gamma-api.polymarket.com/markets?limit=50&closed=false&order_by=volume&order_direction=desc";
+      try{
+        const res=await fetch(url,{mode:"cors",headers:{Accept:"application/json"}});
+        if(!res.ok) throw new Error(res.status);
+        const data=await res.json();
+        return data.map(m=>{
+          try{
+            if(!m.outcomes||!m.outcomePrices) return null;
+            const outs=JSON.parse(m.outcomes);
+            const prices=JSON.parse(m.outcomePrices);
+            if(outs.length<2||prices.length<2) return null;
+            const pct=x=>Math.round(parseFloat(x||0)*100);
+            const fmtVol=v=>{
+              const n=parseFloat(v)||0;
+              if(n>=1e6) return `$${(n/1e6).toFixed(1)}M`;
+              if(n>=1e3) return `$${(n/1e3).toFixed(0)}K`;
+              return `$${Math.round(n)}`;
+            };
+            return {
+              title:(m.groupItemTitle||m.question||m.slug.replace(/-/g," ")).trim(),
+              subtitle:(m.events?.[0]?.series?.[0]?.title||m.events?.[0]?.title||"Prediction"),
+              o1:outs[0],o2:outs[1],
+              p1:pct(prices[0]),p2:pct(prices[1]),
+              vol:fmtVol(m.volumeNum)
+            };
+          }catch(_){return null;}
+        }).filter(Boolean);
+      }catch(e){console.error("Polymarket fetch error",e);return[];}
+    }
+
+    /** create a card element html **/
+    const makeCard=d=>`
+      <div class="card">
+        <div class="subtitle">${d.subtitle}</div>
+        <div class="title">${d.title}</div>
+        <div class="badge">${d.vol}</div>
+        <div class="row">
+          <div class="opt yes"><span>${d.o1}</span><span>${d.p1}¢</span></div>
+          <div class="opt no"><span>${d.o2}</span><span>${d.p2}¢</span></div>
+        </div>
+      </div>`;
+
+    async function init(){
+      const markets=await getMarkets();
+      if(!markets.length) return;
+      const track=document.getElementById("track");
+      // duplicate list to guarantee continuous scroll
+      const duplicated=[...markets,...markets,...markets,...markets];
+      track.innerHTML=duplicated.map(makeCard).join("");
+    }
+    init();
+    // refresh every 10 min
+    setInterval(init,10*60*1000);
+    // if tab regains focus, refresh quick
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden) setTimeout(init,1000);});
+  </script>
+</body>
+</html>
