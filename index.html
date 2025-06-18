@@ -56,7 +56,17 @@
     /**************** HELPERS ****************/
     const pct = x => Math.round(parseFloat(x||0)*100);
     const catOf = m => {
-      const tags = Array.isArray(m.tickerTagSlugs) ? m.tickerTagSlugs.join(" ") : "";
+      // agrega possíveis campos de tags/categorias
+      const arr = [];
+      if (Array.isArray(m.tickerTagSlugs)) arr.push(...m.tickerTagSlugs);
+      if (Array.isArray(m.tagSlugs))       arr.push(...m.tagSlugs);
+      if (Array.isArray(m.tags))           arr.push(...m.tags);
+      if (m.categorySlug)                 arr.push(m.categorySlug);
+      if (m.groupSlug)                    arr.push(m.groupSlug);
+      if (m.category)                     arr.push(m.category);
+      if (m.group)                        arr.push(m.group);
+      return arr.join(" ").toLowerCase();
+    };
       return (tags + " " + (m.categorySlug||m.groupSlug||m.category||m.group||""))
               .toLowerCase();
     };
