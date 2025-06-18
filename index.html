@@ -3,64 +3,129 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Crypto Prices Banner</title>
+<title>Polymarket Odds Banner</title>
 <style>
- :root{--banner-h:80px;--scroll-duration:120s;--bg:#0e1117;--text:#e6e8ea;--divider:#2c313d;}
- html,body{margin:0;padding:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif;}
- #cryptoBanner{position:absolute;inset:0 auto auto 0;height:var(--banner-h);background:var(--bg);color:var(--text);overflow:hidden;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.5);}
- .track{display:flex;height:100%;align-items:center;animation:scroll var(--scroll-duration) linear infinite;will-change:transform;}
+ /* ------ aparência geral (versão 24) ------ */
+ :root{
+  --divider:#E5E7EB;
+  --yes:#00D578;
+  --no:#FF453A;
+  --text:#111827;
+  --text-muted:#6B7280;
+  --banner-h:60px;          /* banner fino */
+  --scroll-duration:180s;   /* rolagem lenta */
+ }
+ html,body{margin:0;padding:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,
+           "Helvetica Neue",Helvetica,Arial,sans-serif;}
+ #banner{position:absolute;inset:0 auto auto 0;height:var(--banner-h);
+         backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
+         background:rgba(249,250,251,.85);box-shadow:0 6px 18px rgba(0,0,0,.08);
+         overflow:hidden;}
+ .track{display:flex;height:100%;align-items:center;
+        animation:scroll var(--scroll-duration) linear infinite;will-change:transform;}
  @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
- #cryptoBanner:hover .track{animation-play-state:paused;}
- .item{display:flex;align-items:center;gap:6px;padding:0 18px;border-right:1px solid var(--divider);font-size:15px;font-weight:600;}
- .price{font-variant-numeric:tabular-nums;}
- .up{color:#00d97e;} .down{color:#ff5c5c;}
+ #banner:hover .track{animation-play-state:paused;}
+ .card{flex-shrink:0;display:flex;flex-direction:column;justify-content:center;
+       gap:1px;min-width:340px;height:100%;padding:6px 14px;border-right:1px solid var(--divider);
+       box-sizing:border-box;}
+ .subtitle{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;
+           color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+ .title{font-size:14px;font-weight:700;line-height:1.25;color:var(--text);white-space:nowrap;
+        overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+ .row{display:flex;gap:8px;margin-top:2px;}
+ .opt{flex:1;display:flex;justify-content:space-between;align-items:center;padding:4px 8px;
+      border-radius:6px;font-weight:700;color:#fff;font-size:13px;white-space:nowrap;user-select:none;}
+ .yes{background:var(--yes);} .no{background:var(--no);}
 </style>
 </head>
 <body>
-<div id="cryptoBanner"><div class="track" id="track"></div></div>
+<div id="banner"><div class="track" id="track"></div></div>
 
 <script>
-// ----------- CONFIG -------------
-const COINS=[
-  {id:"bitcoin",     symbol:"BTC"},
-  {id:"ethereum",    symbol:"ETH"},
-  {id:"solana",      symbol:"SOL"},
-  {id:"binancecoin", symbol:"BNB"},
-  {id:"dogecoin",    symbol:"DOGE"},
-  {id:"cardano",     symbol:"ADA"},
-  {id:"toncoin",     symbol:"TON"},
-  {id:"polkadot",    symbol:"DOT"},
-  {id:"chainlink",   symbol:"LINK"},
-  {id:"tron",        symbol:"TRX"}
-]; // add/remove here (no stablecoins)
-
-const API=`https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids=${COINS.map(c=>c.id).join(',')}&include_24hr_change=true`;
-
-// ----------- HELPERS ------------
-function fmt(n){return n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});}
-function makeItem(c,price,change){
-  const cls=change>=0?'up':'down';
-  const sign=change>=0?'+':'';
-  return `<div class="item"><span>${c.symbol}</span><span class="price">$${fmt(price)}</span><span class="${cls}">${sign}${fmt(change)}%</span></div>`;
+/* ---------- CONFIG ---------- */
+const API_URL="https://poly-proxy.henriqueparadigma.workers.dev/markets?limit=300&closed=false&order_by=volume&order_direction=desc";
+const KEYWORDS={
+  crypto:["crypto","bitcoin","btc","eth","ethereum"],
+  tech:["tech","ai","nvidia","apple","microsoft"],
+  world:["world","iran","russia","ukraine","china","israel"],
+  economy:["economy","inflation","gdp","recession"],
+  trump:["trump"]
+};
+const CATS=Object.keys(KEYWORDS);
+const pct=v=>Math.round(parseFloat(v||0)*100);
+function detectCat(text){
+  text=text.toLowerCase();
+  for(const c of CATS){
+    if(KEYWORDS[c].some(k=>text.includes(k))) return c;
+  }
+  return null;
 }
-// ----------- CORE ---------------
+function makeCard(d){
+  return `<div class="card">
+    <div class="subtitle">${d.cat.toUpperCase()}</div>
+    <div class="title">${d.title}</div>
+    <div class="row">
+      <div class="opt yes"><span>${d.o1}</span><span>${d.p1}¢</span></div>
+      <div class="opt no"><span>${d.o2}</span><span>${d.p2}¢</span></div>
+    </div>
+  </div>`;
+}
+
+/* ---------- CORE ---------- */
+async function loadMarkets(){
+  const res=await fetch(API_URL);
+  if(!res.ok) throw new Error(res.status);
+  const raw=await res.json();
+  return raw.map(m=>{
+    try{
+      const text=(m.question||"") + " " + (m.slug||"");
+      const cat=detectCat(text);
+      if(!cat) return null;
+      const outs=Array.isArray(m.outcomes)?m.outcomes:JSON.parse(m.outcomes);
+      const prices=Array.isArray(m.outcomePrices)?m.outcomePrices:JSON.parse(m.outcomePrices);
+      if(outs.length<2||prices.length<2) return null;
+      return {
+        cat,
+        title:(m.question||m.slug.replace(/-/g," ")).trim(),
+        o1:outs[0], o2:outs[1],
+        p1:pct(prices[0]), p2:pct(prices[1])
+      };
+    }catch{return null;}
+  }).filter(Boolean);
+}
+
+function balance(list){
+  const buckets=Object.fromEntries(CATS.map(k=>[k,[]]));
+  list.forEach(x=>{ if(buckets[x.cat]) buckets[x.cat].push(x); });
+  const min=Math.min(...CATS.map(k=>buckets[k].length));
+  const ordered=[];
+  for(let i=0;i<min;i++){
+    for(const k of CATS){ ordered.push(buckets[k][i]); }
+  }
+  return ordered;
+}
+
 async function build(){
+  const banner=document.getElementById('banner');
   try{
-    const data=await fetch(API,{headers:{'accept':'application/json'}}).then(r=>r.json());
-    const items=COINS.map(c=>{
-      const p=data[c.id];
-      if(!p) return '';
-      return makeItem(c,p.usd,p.usd_24h_change);
-    }).join('');
-    document.getElementById('track').innerHTML=items+items; // duplicate for seamless scroll
+    let markets=await loadMarkets();
+    if(!markets.length){
+      banner.innerHTML='<div style="color:#B91C1C;font-weight:600;padding:6px">⚠️ Nenhum mercado disponível agora.</div>';
+      return;
+    }
+    markets=balance(markets);
+    document.getElementById('track').innerHTML=[...markets,...markets].map(makeCard).join('');
   }catch(e){
-    console.error('CGK error',e);
-    document.getElementById('cryptoBanner').innerText='⚠️ erro ao carregar preços';
+    console.error('Polymarket fetch error',e);
+    banner.innerHTML='<div style="color:#B91C1C;font-weight:600;padding:6px">⚠️ Não foi possível carregar as cotações agora.</div>';
   }
 }
 
 build();
-setInterval(build,60*1000); // update a cada 1 min
+setInterval(build,10*60*1000);       // atualiza a cada 10 min
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden) setTimeout(build,1000);
+});
 </script>
 </body>
 </html>
