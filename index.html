@@ -5,44 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Polymarket Odds Banner</title>
 <style>
- /* ------ aparência geral (versão 24) ------ */
- :root{
-  --divider:#E5E7EB;
-  --yes:#00D578;
-  --no:#FF453A;
-  --text:#111827;
-  --text-muted:#6B7280;
-  --banner-h:60px;          /* banner fino */
-  --scroll-duration:180s;   /* rolagem lenta */
- }
- html,body{margin:0;padding:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,
-           "Helvetica Neue",Helvetica,Arial,sans-serif;}
- #banner{position:absolute;inset:0 auto auto 0;height:var(--banner-h);
-         backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
-         background:rgba(249,250,251,.85);box-shadow:0 6px 18px rgba(0,0,0,.08);
-         overflow:hidden;}
- .track{display:flex;height:100%;align-items:center;
-        animation:scroll var(--scroll-duration) linear infinite;will-change:transform;}
- @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
- #banner:hover .track{animation-play-state:paused;}
- .card{flex-shrink:0;display:flex;flex-direction:column;justify-content:center;
-       gap:1px;min-width:340px;height:100%;padding:6px 14px;border-right:1px solid var(--divider);
-       box-sizing:border-box;}
- .subtitle{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;
-           color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
- .title{font-size:14px;font-weight:700;line-height:1.25;color:var(--text);white-space:nowrap;
-        overflow:hidden;text-overflow:ellipsis;max-width:100%;}
- .row{display:flex;gap:8px;margin-top:2px;}
- .opt{flex:1;display:flex;justify-content:space-between;align-items:center;padding:4px 8px;
-      border-radius:6px;font-weight:700;color:#fff;font-size:13px;white-space:nowrap;user-select:none;}
- .yes{background:var(--yes);} .no{background:var(--no);}
+html,body{margin:0;padding:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;}
+:root{--divider:#E5E7EB;--yes:#00D578;--no:#FF453A;--text:#111827;--text-muted:#6B7280;--banner-h:100px;--scroll-duration:180s;}
+#banner{position:absolute;inset:0 auto auto 0;height:var(--banner-h);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);background:rgba(249,250,251,.85);box-shadow:0 8px 30px rgba(0,0,0,.08);overflow:hidden;}
+.track{display:flex;height:100%;align-items:center;animation:scroll var(--scroll-duration) linear infinite;will-change:transform;}
+@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+#banner:hover .track{animation-play-state:paused;}
+.card{flex-shrink:0;display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:380px;height:100%;padding:12px 20px;border-right:1px solid var(--divider);box-sizing:border-box;}
+.subtitle{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.title{font-size:16px;font-weight:700;line-height:1.25;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.row{display:flex;gap:10px;margin-top:4px;}
+.opt{flex:1;display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-radius:8px;font-weight:700;color:#fff;font-size:15px;white-space:nowrap;user-select:none;}
+.yes{background:var(--yes);} .no{background:var(--no);}  
 </style>
 </head>
 <body>
 <div id="banner"><div class="track" id="track"></div></div>
-
 <script>
-/* ---------- CONFIG ---------- */
 const API_URL="https://poly-proxy.henriqueparadigma.workers.dev/markets?limit=300&closed=false&order_by=volume&order_direction=desc";
 const KEYWORDS={
   crypto:["crypto","bitcoin","btc","eth","ethereum"],
@@ -53,79 +32,11 @@ const KEYWORDS={
 };
 const CATS=Object.keys(KEYWORDS);
 const pct=v=>Math.round(parseFloat(v||0)*100);
-function detectCat(text){
-  text=text.toLowerCase();
-  for(const c of CATS){
-    if(KEYWORDS[c].some(k=>text.includes(k))) return c;
-  }
-  return null;
-}
-function makeCard(d){
-  return `<div class="card">
-    <div class="subtitle">${d.cat.toUpperCase()}</div>
-    <div class="title">${d.title}</div>
-    <div class="row">
-      <div class="opt yes"><span>${d.o1}</span><span>${d.p1}¢</span></div>
-      <div class="opt no"><span>${d.o2}</span><span>${d.p2}¢</span></div>
-    </div>
-  </div>`;
-}
-
-/* ---------- CORE ---------- */
-async function loadMarkets(){
-  const res=await fetch(API_URL);
-  if(!res.ok) throw new Error(res.status);
-  const raw=await res.json();
-  return raw.map(m=>{
-    try{
-      const text=(m.question||"") + " " + (m.slug||"");
-      const cat=detectCat(text);
-      if(!cat) return null;
-      const outs=Array.isArray(m.outcomes)?m.outcomes:JSON.parse(m.outcomes);
-      const prices=Array.isArray(m.outcomePrices)?m.outcomePrices:JSON.parse(m.outcomePrices);
-      if(outs.length<2||prices.length<2) return null;
-      return {
-        cat,
-        title:(m.question||m.slug.replace(/-/g," ")).trim(),
-        o1:outs[0], o2:outs[1],
-        p1:pct(prices[0]), p2:pct(prices[1])
-      };
-    }catch{return null;}
-  }).filter(Boolean);
-}
-
-function balance(list){
-  const buckets=Object.fromEntries(CATS.map(k=>[k,[]]));
-  list.forEach(x=>{ if(buckets[x.cat]) buckets[x.cat].push(x); });
-  const min=Math.min(...CATS.map(k=>buckets[k].length));
-  const ordered=[];
-  for(let i=0;i<min;i++){
-    for(const k of CATS){ ordered.push(buckets[k][i]); }
-  }
-  return ordered;
-}
-
-async function build(){
-  const banner=document.getElementById('banner');
-  try{
-    let markets=await loadMarkets();
-    if(!markets.length){
-      banner.innerHTML='<div style="color:#B91C1C;font-weight:600;padding:6px">⚠️ Nenhum mercado disponível agora.</div>';
-      return;
-    }
-    markets=balance(markets);
-    document.getElementById('track').innerHTML=[...markets,...markets].map(makeCard).join('');
-  }catch(e){
-    console.error('Polymarket fetch error',e);
-    banner.innerHTML='<div style="color:#B91C1C;font-weight:600;padding:6px">⚠️ Não foi possível carregar as cotações agora.</div>';
-  }
-}
-
-build();
-setInterval(build,10*60*1000);       // atualiza a cada 10 min
-document.addEventListener('visibilitychange',()=>{
-  if(!document.hidden) setTimeout(build,1000);
-});
+function detectCat(text){text=text.toLowerCase();for(const c of CATS){if(KEYWORDS[c].some(k=>text.includes(k))) return c;}return null;}
+const makeCard=d=>`<div class="card"><div class="subtitle">${d.cat.toUpperCase()}</div><div class="title">${d.title}</div><div class="row"><div class="opt yes"><span>${d.o1}</span><span>${d.p1}¢</span></div><div class="opt no"><span>${d.o2}</span><span>${d.p2}¢</span></div></div></div>`;
+async function loadMarkets(){const res=await fetch(API_URL);if(!res.ok) throw new Error(res.status);const raw=await res.json();return raw.map(m=>{try{const text=(m.question||"")+" "+(m.slug||"");const cat=detectCat(text);if(!cat) return null;const outs=Array.isArray(m.outcomes)?m.outcomes:JSON.parse(m.outcomes);const prices=Array.isArray(m.outcomePrices)?m.outcomePrices:JSON.parse(m.outcomePrices);if(outs.length<2||prices.length<2) return null;return{cat,title:(m.question||m.slug.replace(/-/g," ")).trim(),o1:outs[0],o2:outs[1],p1:pct(prices[0]),p2:pct(prices[1])};}catch{return null;}}).filter(Boolean);}function balance(list){const buckets=Object.fromEntries(CATS.map(k=>[k,[]]));list.forEach(x=>{if(buckets[x.cat]) buckets[x.cat].push(x);});const min=Math.min(...CATS.map(k=>buckets[k].length));const ordered=[];for(let i=0;i<min;i++){for(const k of CATS){ordered.push(buckets[k][i]);}}return ordered;}
+async function build(){const banner=document.getElementById('banner');try{let markets=await loadMarkets();if(!markets.length){banner.innerHTML='<div style="color:#B91C1C;font-weight:600;padding:10px">⚠️ Nenhum mercado disponível agora.</div>';return;}markets=balance(markets);document.getElementById('track').innerHTML=[...markets,...markets].map(makeCard).join('');}catch(e){console.error('Polymarket fetch error',e);banner.innerHTML='<div style="color:#B91C1C;font-weight:600;padding:10px">⚠️ Não foi possível carregar as cotações agora.</div>';}}
+build();setInterval(build,10*60*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(build,1000);});
 </script>
 </body>
 </html>
