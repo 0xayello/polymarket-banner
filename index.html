@@ -14,7 +14,7 @@
       --text:#111827;
       --text-muted:#6B7280;
       --banner-h:100px;
-      --scroll-duration:720s; /* 3× mais devagar que antes */
+      --scroll-duration:180s; /* velocidade original da v12 */
     }
 
     #banner{position:absolute;inset:0 auto auto 0;height:var(--banner-h);
@@ -51,9 +51,11 @@
   <script>
     /**************** CONFIG ****************/
     const API_URL = "https://poly-proxy.henriqueparadigma.workers.dev/markets?limit=100&closed=false&order_by=volume&order_direction=desc";
+    const ALLOWED = ["crypto","tech","world","economy","trump"]; // categorias desejadas (minúsculas)
 
     /**************** HELPERS ****************/
     const pct = x => Math.round(parseFloat(x||0)*100);
+    const catOf = m => (m.categorySlug||m.category||m.group||m.groupSlug||"").toLowerCase();
 
     const makeCard = d => `
       <div class="card">
@@ -70,19 +72,22 @@
       const res = await fetch(API_URL);
       if(!res.ok) throw new Error(res.status);
       const raw = await res.json();
-      return raw.map(m=>{
-        try{
-          const outs   = Array.isArray(m.outcomes)      ? m.outcomes      : JSON.parse(m.outcomes);
-          const prices = Array.isArray(m.outcomePrices) ? m.outcomePrices : JSON.parse(m.outcomePrices);
-          if(outs.length<2||prices.length<2) return null;
-          return {
-            title:(m.groupItemTitle||m.question||m.slug.replace(/-/g," ")).trim(),
-            subtitle:(m.events?.[0]?.series?.[0]?.title||m.events?.[0]?.title||"Prediction"),
-            o1:outs[0],o2:outs[1],
-            p1:pct(prices[0]),p2:pct(prices[1])
-          };
-        }catch{return null;}
-      }).filter(Boolean);
+      return raw
+        .filter(m => ALLOWED.some(k => catOf(m).includes(k)))
+        .map(m => {
+          try{
+            const outs   = Array.isArray(m.outcomes)      ? m.outcomes      : JSON.parse(m.outcomes);
+            const prices = Array.isArray(m.outcomePrices) ? m.outcomePrices : JSON.parse(m.outcomePrices);
+            if(outs.length<2||prices.length<2) return null;
+            return {
+              title:(m.groupItemTitle||m.question||m.slug.replace(/-/g," ")).trim(),
+              subtitle:(m.events?.[0]?.series?.[0]?.title||m.events?.[0]?.title||"Prediction"),
+              o1:outs[0],o2:outs[1],
+              p1:pct(prices[0]),p2:pct(prices[1])
+            };
+          }catch{return null;}
+        })
+        .filter(Boolean);
     }
 
     async function build(){
