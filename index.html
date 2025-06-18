@@ -51,6 +51,7 @@
 
     function collectTags(m){
       const tags=[];
+      // -------- root-level keys --------
       if(Array.isArray(m.tickerTagSlugs)) tags.push(...m.tickerTagSlugs);
       if(Array.isArray(m.tagSlugs))       tags.push(...m.tagSlugs);
       if(Array.isArray(m.tags))           tags.push(...m.tags);
@@ -58,7 +59,23 @@
       if(m.groupSlug)    tags.push(m.groupSlug);
       if(m.category)     tags.push(m.category);
       if(m.group)        tags.push(m.group);
+
+      // -------- nested: events / series --------
+      if(Array.isArray(m.events)){
+        m.events.forEach(ev=>{
+          if(Array.isArray(ev.tagSlugs))   tags.push(...ev.tagSlugs);
+          if(Array.isArray(ev.topicSlugs)) tags.push(...ev.topicSlugs);
+          if(Array.isArray(ev.series)){
+            ev.series.forEach(s=>{
+              if(Array.isArray(s.tagSlugs))   tags.push(...s.tagSlugs);
+              if(Array.isArray(s.topicSlugs)) tags.push(...s.topicSlugs);
+            });
+          }
+        });
+      }
+
       return tags.join(" ").toLowerCase();
+    }(" ").toLowerCase();
     }
 
     const makeCard = d => `<div class="card"><div class="subtitle">${d.subtitle}</div><div class="title">${d.title}</div><div class="row"><div class="opt yes"><span>${d.o1}</span><span>${d.p1}¢</span></div><div class="opt no"><span>${d.o2}</span><span>${d.p2}¢</span></div></div></div>`;
