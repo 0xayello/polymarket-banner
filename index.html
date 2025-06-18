@@ -55,7 +55,11 @@
 
     /**************** HELPERS ****************/
     const pct = x => Math.round(parseFloat(x||0)*100);
-    const catOf = m => (m.categorySlug||m.category||m.group||m.groupSlug||"").toLowerCase();
+    const catOf = m => {
+      const tags = Array.isArray(m.tickerTagSlugs) ? m.tickerTagSlugs.join(" ") : "";
+      return (tags + " " + (m.categorySlug||m.groupSlug||m.category||m.group||""))
+              .toLowerCase();
+    };
 
     const makeCard = d => `
       <div class="card">
