@@ -14,7 +14,7 @@
       --text:#111827;
       --text-muted:#6B7280;
       --banner-h:100px;
-      --scroll-duration:180s; /* velocidade original da v12 */
+      --scroll-duration:180s; /* velocidade original v12 */
     }
 
     #banner{position:absolute;inset:0 auto auto 0;height:var(--banner-h);
@@ -28,20 +28,14 @@
     @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
     #banner:hover .track{animation-play-state:paused;}
 
-    /* CARD */
     .card{flex-shrink:0;display:flex;flex-direction:column;justify-content:center;
       min-width:380px;height:100%;padding:12px 20px;border-right:1px solid var(--divider);
       box-sizing:border-box;gap:2px;}
-    .subtitle{font-size:12px;font-weight:600;text-transform:uppercase;
-      letter-spacing:.06em;color:var(--text-muted);white-space:nowrap;
-      overflow:hidden;text-overflow:ellipsis;}
-    .title{font-size:16px;font-weight:700;line-height:1.25;color:var(--text);
-      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+    .subtitle{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .title{font-size:16px;font-weight:700;line-height:1.25;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 
     .row{display:flex;gap:10px;margin-top:4px;}
-    .opt{flex:1;display:flex;justify-content:space-between;align-items:center;
-      padding:7px 12px;border-radius:8px;font-weight:700;color:#fff;font-size:15px;
-      user-select:none;white-space:nowrap;}
+    .opt{flex:1;display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-radius:8px;font-weight:700;color:#fff;font-size:15px;user-select:none;white-space:nowrap;}
     .yes{background:var(--yes);} .no{background:var(--no);}  
   </style>
 </head>
@@ -49,26 +43,22 @@
   <div id="banner"><div class="track" id="track"></div></div>
 
   <script>
-    /**************** CONFIG ****************/
+    /******** CONFIG ********/
     const API_URL = "https://poly-proxy.henriqueparadigma.workers.dev/markets?limit=100&closed=false&order_by=volume&order_direction=desc";
-    const ALLOWED = ["crypto","tech","world","economy","trump"]; // categorias desejadas (minúsculas)
+    const ALLOWED = ["crypto","tech","world","economy","trump"]; // slugs desejados
 
-    /**************** HELPERS ****************/
+    /******** HELPERS ********/
     const pct = x => Math.round(parseFloat(x||0)*100);
     const catOf = m => {
-      // agrega possíveis campos de tags/categorias
-      const arr = [];
-      if (Array.isArray(m.tickerTagSlugs)) arr.push(...m.tickerTagSlugs);
-      if (Array.isArray(m.tagSlugs))       arr.push(...m.tagSlugs);
-      if (Array.isArray(m.tags))           arr.push(...m.tags);
-      if (m.categorySlug)                 arr.push(m.categorySlug);
-      if (m.groupSlug)                    arr.push(m.groupSlug);
-      if (m.category)                     arr.push(m.category);
-      if (m.group)                        arr.push(m.group);
-      return arr.join(" ").toLowerCase();
-    };
-      return (tags + " " + (m.categorySlug||m.groupSlug||m.category||m.group||""))
-              .toLowerCase();
+      const bag = [];
+      if(Array.isArray(m.tickerTagSlugs)) bag.push(...m.tickerTagSlugs);
+      if(Array.isArray(m.tagSlugs))       bag.push(...m.tagSlugs);
+      if(Array.isArray(m.tags))           bag.push(...m.tags);
+      if(m.categorySlug) bag.push(m.categorySlug);
+      if(m.groupSlug)    bag.push(m.groupSlug);
+      if(m.category)     bag.push(m.category);
+      if(m.group)        bag.push(m.group);
+      return bag.join(" ").toLowerCase();
     };
 
     const makeCard = d => `
@@ -81,27 +71,23 @@
         </div>
       </div>`;
 
-    /**************** CORE ****************/
+    /******** CORE ********/
     async function loadMarkets(){
       const res = await fetch(API_URL);
       if(!res.ok) throw new Error(res.status);
       const raw = await res.json();
-      return raw
-        .filter(m => ALLOWED.some(k => catOf(m).includes(k)))
-        .map(m => {
-          try{
-            const outs   = Array.isArray(m.outcomes)      ? m.outcomes      : JSON.parse(m.outcomes);
-            const prices = Array.isArray(m.outcomePrices) ? m.outcomePrices : JSON.parse(m.outcomePrices);
-            if(outs.length<2||prices.length<2) return null;
-            return {
-              title:(m.groupItemTitle||m.question||m.slug.replace(/-/g," ")).trim(),
-              subtitle:(m.events?.[0]?.series?.[0]?.title||m.events?.[0]?.title||"Prediction"),
-              o1:outs[0],o2:outs[1],
-              p1:pct(prices[0]),p2:pct(prices[1])
-            };
-          }catch{return null;}
-        })
-        .filter(Boolean);
+      return raw.filter(m=>ALLOWED.some(k=>catOf(m).includes(k))).map(m=>{
+        try{
+          const outs=Array.isArray(m.outcomes)?m.outcomes:JSON.parse(m.outcomes);
+          const prices=Array.isArray(m.outcomePrices)?m.outcomePrices:JSON.parse(m.outcomePrices);
+          if(outs.length<2||prices.length<2) return null;
+          return {
+            title:(m.groupItemTitle||m.question||m.slug.replace(/-/g," ")).trim(),
+            subtitle:(m.events?.[0]?.series?.[0]?.title||m.events?.[0]?.title||"Prediction"),
+            o1:outs[0],o2:outs[1],p1:pct(prices[0]),p2:pct(prices[1])
+          };
+        }catch{return null;}
+      }).filter(Boolean);
     }
 
     async function build(){
