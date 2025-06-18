@@ -50,27 +50,9 @@
     const pct = v => Math.round(parseFloat(v||0)*100);
 
     function collectTags(m){
-      const tags=[];
-      // -------- root-level keys --------
-      if(Array.isArray(m.tickerTagSlugs)) tags.push(...m.tickerTagSlugs);
-      if(Array.isArray(m.tagSlugs))       tags.push(...m.tagSlugs);
-      if(Array.isArray(m.tags))           tags.push(...m.tags);
-      if(m.categorySlug) tags.push(m.categorySlug);
-      if(m.groupSlug)    tags.push(m.groupSlug);
-      if(m.category)     tags.push(m.category);
-      if(m.group)        tags.push(m.group);
-
-      // -------- nested: events / series --------
-      if(Array.isArray(m.events)){
-        m.events.forEach(ev=>{
-          if(Array.isArray(ev.tagSlugs))   tags.push(...ev.tagSlugs);
-          if(Array.isArray(ev.topicSlugs)) tags.push(...ev.topicSlugs);
-          if(Array.isArray(ev.series)){
-            ev.series.forEach(s=>{
-              if(Array.isArray(s.tagSlugs))   tags.push(...s.tagSlugs);
-              if(Array.isArray(s.topicSlugs)) tags.push(...s.topicSlugs);
-            });
-          }
+      // filtra de forma simples com base no texto da pergunta e no slug
+      return ((m.question || "") + " " + (m.slug || "")).toLowerCase();
+    }
         });
       }
 
