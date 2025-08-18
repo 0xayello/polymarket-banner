@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Banner de Cotações do Polymarket</title>
+<style>
+html,body{margin:0;padding:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;}
+:root{--divider:#E5E7EB;--yes:#00D578;--no:#FF453A;--text:#111827;--text-muted:#6B7280;--banner-h:100px;--scroll-duration:180s;}
+#banner{position:absolute;inset:0 auto auto 0;height:var(--banner-h);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);background:rgba(249,250,251,.85);box-shadow:0 8px 30px rgba(0,0,0,.08);overflow:hidden;}
+.track{display:flex;height:100%;align-items:center;animation:scroll var(--scroll-duration) linear infinite;will-change:transform;}
+@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+#banner:hover .track{animation-play-state:paused;}
+.card{flex-shrink:0;display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:260px;width:max-content;height:100%;padding:12px 20px;border-right:1px solid var(--divider);box-sizing:border-box;}
+.subtitle{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%;}
+.title{font-size:16px;font-weight:700;line-height:1.25;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;width:100%;}
+.title .t{display:inline-block;}
+.row{display:flex;gap:10px;margin-top:4px;justify-content:flex-start;}
+.opt{flex:1;display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-radius:8px;font-weight:700;color:#fff;font-size:15px;white-space:nowrap;user-select:none;}
+.yes{background:var(--yes);} .no{background:var(--no);}  
+</style>
+</head>
+<body>
+<div id="banner"><div class="track" id="track"></div></div>
+<script>
+const API_URL="https://poly-proxy.henriqueparadigma.workers.dev/markets?limit=300&closed=false&order_by=volume&order_direction=desc";
+const KEYWORDS={
+  cripto:["crypto","bitcoin","btc","eth","ethereum"],
+  tech:["tech","ai","nvidia","apple","microsoft"],
+  mundo:["world","iran","russia","ukraine","china","israel"],
+  economia:["economy","inflation","gdp","recession"],
+  trump:["trump"]
+};
+const CATS=Object.keys(KEYWORDS);
+const pct=v=>Math.round(parseFloat(v||0)*100);
+function escapeRegExp(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function detectCat(text){const lower=text.toLowerCase();for(const c of CATS){for(const k of KEYWORDS[c]){const re=new RegExp(`\\b${escapeRegExp(k.toLowerCase())}\\b`,'i');if(re.test(lower)) return c;}}return null;}
+function translateOutcome(text){if(!text) return "";const t=String(text).trim().toLowerCase();if(t==="yes") return "Sim";if(t==="no") return "Não";return text;}
+function translateTitle(text){if(!text) return "";let t=String(text);
+  const rules=[
+    [/\bJanuary\b/gi,'Janeiro'],[/\bFebruary\b/gi,'Fevereiro'],[/\bMarch\b/gi,'Março'],[/\bApril\b/gi,'Abril'],[/\bMay\b/gi,'Maio'],[/\bJune\b/gi,'Junho'],[/\bJuly\b/gi,'Julho'],[/\bAugust\b/gi,'Agosto'],[/\bSeptember\b/gi,'Setembro'],[/\bOctober\b/gi,'Outubro'],[/\bNovember\b/gi,'Novembro'],[/\bDecember\b/gi,'Dezembro'],
+    [/\bWhite House\b/gi,'Casa Branca'],
+    [/\bElections\b/gi,'Eleições'],[/\bElection\b/gi,'Eleição'],
+    [/\bVotes\b/gi,'Votos'],[/\bVote\b/gi,'Voto'],[/\bVoting\b/gi,'Votação'],
+    [/\bPrimary\b/gi,'Primária'],[/\bRunoff\b/gi,'Segundo turno'],[/\bCaucus\b/gi,'Prévia'],
+    [/\bDebates\b/gi,'Debates'],[/\bDebate\b/gi,'Debate'],[/\bPolls\b/gi,'Pesquisas'],[/\bPoll\b/gi,'Pesquisa'],
+    [/\bApproval Rating\b/gi,'Aprovação'],[/\bApproval\b/gi,'Aprovação'],
+    [/\bIndictments\b/gi,'Acusações'],[/\bIndictment\b/gi,'Acusação'],[/\bCharged\b/gi,'Acusado'],
+    [/\bCeasefire\b/gi,'Cessar-fogo'],[/\bWar\b/gi,'Guerra'],[/\bConflict\b/gi,'Conflito'],
+    [/\bInflation\b/gi,'Inflação'],[/\bGDP\b/gi,'PIB'],[/\bUnemployment\b/gi,'Desemprego'],[/\bRecession\b/gi,'Recessão'],
+    [/\bInterest Rates\b/gi,'Juros'],[/\bInterest Rate\b/gi,'Juros'],[/\bRate Hikes\b/gi,'Alta de juros'],[/\bRate Hike\b/gi,'Alta de juros'],[/\bRate Cuts\b/gi,'Corte de juros'],[/\bRate Cut\b/gi,'Corte de juros'],
+    [/\bFederal Reserve\b/gi,'Federal Reserve'],[/\bECB\b/gi,'BCE'],[/\bBank of England\b/gi,'Banco da Inglaterra'],
+    [/\bSupreme Court\b/gi,'Suprema Corte'],[/\bSCOTUS\b/gi,'Suprema Corte (EUA)'],[/\bSupreme Leader\b/gi,'Líder Supremo'],
+    [/\bHouse\b/gi,'Câmara'],[/\bSenate\b/gi,'Senado'],[/\bCongress\b/gi,'Congresso'],[/\bParliament\b/gi,'Parlamento'],
+    [/\bEuropean Union\b/gi,'União Europeia'],[/\bEU\b/gi,'UE'],[/\bUnited Kingdom\b/gi,'Reino Unido'],[/\bUK\b/gi,'Reino Unido'],[/\bUnited States\b/gi,'Estados Unidos'],[/\bUSA?\b/gi,'EUA'],
+    [/\bIran\b/gi,'Irã'],[/\bRussia\b/gi,'Rússia'],[/\bUkraine\b/gi,'Ucrânia'],
+    [/\bMarkets\b/gi,'Mercados'],[/\bMarket\b/gi,'Mercado'],
+    [/\bDivorce\b/gi,'Divórcio'],[/\bMarriage\b/gi,'Casamento'],
+    [/\bout as\b/gi,'deixará o cargo de'],
+    [/\breach\b/gi,'atingir'],[/\bHit\b/gi,'atingir'],[/\bwin\b/gi,'ganhar'],[/\blose\b/gi,'perder'],
+    [/\bmore than\b/gi,'mais de'],[/\bless than\b/gi,'menos de'],[/\bat least\b/gi,'pelo menos'],[/\bat most\b/gi,'no máximo'],[/\bor more\b/gi,'ou mais'],[/\bor less\b/gi,'ou menos'],
+    [/\bIn\b/gi,'em'],[/\bOf\b/gi,'de'],
+    [/\bPresident\b/gi,'Presidente'],[/\bPrime Minister\b/gi,'Primeiro-ministro'],
+    [/\bNobel\s+Peace\s+Prize\b/gi,'Prêmio Nobel da Paz'],
+    [/\bjoins\b/gi,'se junta ao'],[/\bjoin\b/gi,'se juntar ao'],
+    [/\bNATO\b/gi,'OTAN'],[/\brecession\b/gi,'recessão'],
+    [/\bhave\s+the\s+top\b/gi,'ter o melhor'],[/\bAI\s+model\b/gi,'modelo de IA'],
+    [/\bpeople\b/gi,'pessoas'],[/\bmil-\b/gi,'mil a '],
+    [/\bdip\s+to\b/gi,'cair para'],[/\bdrop\s+to\b/gi,'cair para']
+  ];
+  for(const [re,rep] of rules){t=t.replace(re,rep);} 
+  // Ajustes de estruturas comuns
+  t=t.replace(/^\s*Will\s+/i,'Vai ');
+  t=t.replace(/\?\s*$/,'?');
+  // "in 2025?" -> "em 2025?"
+  t=t.replace(/\bin\s+(\d{4})\?/i,'em $1?');
+  // "by Month DD, YYYY" -> "antes de DD de Mês de YYYY"
+  const monthMap={January:'Janeiro',February:'Fevereiro',March:'Março',April:'Abril',May:'Maio',June:'Junho',July:'Julho',August:'Agosto',September:'Setembro',October:'Outubro',November:'Novembro',December:'Dezembro',Jan:'Janeiro',Feb:'Fevereiro',Mar:'Março',Apr:'Abril',Jun:'Junho',Jul:'Julho',Aug:'Agosto',Sep:'Setembro',Sept:'Setembro',Oct:'Outubro',Nov:'Novembro',Dec:'Dezembro'};
+  // "by Month DD, YYYY" e "by <Month> <Year>"
+  t=t.replace(/\bby\s+(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\s+(\d{1,2})(?:,\s*(\d{4}))?/ig,(m,mon,day,yr)=>{
+    return 'antes de ' + (day? day + ' de ' : '') + monthMap[mon.charAt(0).toUpperCase()+mon.slice(1).toLowerCase()] + (yr? ' de ' + yr : '');
+  });
+  // Versão em PT-BR: "by Dez 31, 2025" ou "by Dezembro 31, 2025"
+  t=t.replace(/\bby\s+(Jan|Fev|Mar|Abr|Mai|Jun|Jul|Ago|Set|Out|Nov|Dez|Janeiro|Fevereiro|Março|Abril|Maio|Junho|Julho|Agosto|Setembro|Outubro|Novembro|Dezembro)\s+(\d{1,2})(?:,\s*(\d{4}))?/gi,function(m,mon,day,yr){
+    return 'antes de ' + day + ' de ' + mon + (yr? ' de ' + yr : '');
+  });
+  // "on Month DD, YYYY" -> "em DD de Mês de YYYY"
+  t=t.replace(/\bon\s+(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\s+(\d{1,2}),\s*(\d{4})/i,(m,mon,day,yr)=>'em ' + day + ' de ' + monthMap[mon.charAt(0).toUpperCase()+mon.slice(1).toLowerCase()] + ' de ' + yr);
+  // "Month DD, YYYY" isolado -> "DD de Mês de YYYY"
+  t=t.replace(/\b(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\s+(\d{1,2}),\s*(\d{4})/i,(m,mon,day,yr)=> day + ' de ' + monthMap[mon.charAt(0).toUpperCase()+mon.slice(1).toLowerCase()] + ' de ' + yr);
+  // Abrevia meses PT-BR (Janeiro -> Jan, ...)
+  const monthAbbrev={Janeiro:'Jan',Fevereiro:'Fev',Março:'Mar',Abril:'Abr',Maio:'Mai',Junho:'Jun',Julho:'Jul',Agosto:'Ago',Setembro:'Set',Outubro:'Out',Novembro:'Nov',Dezembro:'Dez'};
+  for(const [full,abbr] of Object.entries(monthAbbrev)){
+    t=t.replace(new RegExp(`\\b${full}\\b`,'g'),abbr);
+  }
+  // Reordena "até/ em <MÊS> <DIA>[, <ANO>]" -> "até/ em <DIA> de <MÊS> [de <ANO>]"
+  t=t.replace(/\b(até|em)\s+(Jan|Fev|Mar|Abr|Mai|Jun|Jul|Ago|Set|Out|Nov|Dez|Janeiro|Fevereiro|Março|Abril|Maio|Junho|Julho|Agosto|Setembro|Outubro|Novembro|Dezembro)\s+(\d{1,2})(?:,\s*(\d{4}))?/gi,(m,prep,mon,day,yr)=>{
+    const monPT=monthAbbrev[mon]||mon;return prep + ' ' + day + ' de ' + monPT + (yr ? ' de ' + yr : '');
+  });
+  // Padrao "X x Y Ceasefire" -> "Cessar-fogo entre X e Y"
+  t=t.replace(/\b([A-Za-zÀ-ú'`´^\-\. ]+)\s*(?:x|vs\.?|\-|and)\s*([A-Za-zÀ-ú'`´^\-\. ]+)\s+Cease-?fire/gi,(m,a,b)=>`Cessar-fogo entre ${a.trim()} e ${b.trim()}`);
+  // "<Nome> divorce em YYYY?" -> "<Nome> se divorciará em YYYY?"
+  t=t.replace(/\b([A-Z][A-Za-z\.']+(?:\s+[A-Z][A-Za-z\.']+)*)\s+divorce\s+em\s+(\d{4})\?/i,(m,who,yr)=>`${who} se divorciará em ${yr}?`);
+  // Variante já traduzida: "<Nome> Divórcio em YYYY?"
+  t=t.replace(/\b([A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-Za-zÁÉÍÓÚÂÊÔÃÕÇ\.']+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-Za-zÁÉÍÓÚÂÊÔÃÕÇ\.']+)*)\s+Divórcio\s+em\s+(\d{4})\?/,(m,who,yr)=>`${who} se divorciará em ${yr}?`);
+  // Frase "win Nobel Peace Prize" completa
+  t=t.replace(/win\s+Nobel\s+Peace\s+Prize/gi,'ganhar o Prêmio Nobel da Paz');
+  // Padrao já traduzido para cessar-fogo
+  t=t.replace(/\b([A-Za-zÀ-ú'`´^\-\. ]+)\s*(?:x|vs\.?|\-|e)\s*([A-Za-zÀ-ú'`´^\-\. ]+)\s+Cessar-fogo/gi,(m,a,b)=>`Cessar-fogo entre ${a.trim()} e ${b.trim()}`);
+  // Normaliza valores em dólar: $1,000,000 -> US$ 1.000.000
+  t=t.replace(/\$([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?)/g,function(m,num){return 'US$ '+ num.replace(/,/g,'.')});
+  // Normaliza números com vírgula: 250,000 -> 250.000
+  t=t.replace(/\b([0-9]{1,3}(?:,[0-9]{3})+)\b/g,function(m,num){return num.replace(/,/g,'.')});
+  // Abrevia números grandes (200.000 -> 200 mil; 1.000.000 -> 1 milhão; mantém US$ se presente)
+  t=t.replace(/\b(US\$\s*)?([0-9]{1,3}(?:\.[0-9]{3}){1,})(?![0-9])/g,function(m,curr,num){
+    const n=parseInt(num.replace(/\./g,''),10);
+    if(!isFinite(n)) return m;
+    const withCurr=curr||'';
+    if(n>=1000000000){
+      const v=n/1000000000;
+      const s=(Math.abs(v-Math.round(v))<1e-6? String(Math.round(v)) : String((Math.round(v*10)/10)).replace('.',','));
+      const u=v>=2? 'bilhões':'bilhão';
+      return withCurr + s + ' ' + u;
+    }
+    if(n>=1000000){
+      const v=n/1000000;
+      const s=(Math.abs(v-Math.round(v))<1e-6? String(Math.round(v)) : String((Math.round(v*10)/10)).replace('.',','));
+      const u=v>=2? 'milhões':'milhão';
+      return withCurr + s + ' ' + u;
+    }
+    if(n>=1000){
+      const v=n/1000;
+      const s=(Math.abs(v-Math.round(v))<1e-6? String(Math.round(v)) : String((Math.round(v*10)/10)).replace('.',','));
+      return withCurr + s + ' mil';
+    }
+    return m;
+  });
+  // Termos comuns
+  t=t.replace(/\b(?:market|mercado)\s+cap\b/gi,'valor de mercado');
+  t=t.replace(/\bvalor de mercado\s+(?:on|em)\b/gi,'valor de mercado em');
+  t=t.replace(/\bbe\s+the\s+largest\s+company\s+in\s+the\s+world\b/gi,'ser a maior empresa do mundo');
+  t=t.replace(/\bbe\s+the\s+largest\s+company\b/gi,'ser a maior empresa');
+  t=t.replace(/\bthe\s+largest\s+company\b/gi,'a maior empresa');
+  t=t.replace(/\bin\s+the\s+world\b/gi,'no mundo');
+  t=t.replace(/\bby\s+market\s+cap\b/gi,'por valor de mercado');
+  // Remove "by/por valor de mercado" quando presente, conforme preferido
+  t=t.replace(/\b(?:by|por)\s+valor\s+de\s+mercado\b/gi,'');
+  t=t.replace(/\s{2,}/g,' ');
+  // Ajuste: "no mundo em" -> "do mundo em"
+  t=t.replace(/\bno mundo em\b/gi,'do mundo em');
+  // Correções estruturais específicas
+  t=t.replace(/\bser a maior empresa no mundo até valor de mercado\b/gi,'ser a maior empresa do mundo');
+  t=t.replace(/\bno mundo até valor de mercado\b/gi,'do mundo');
+  t=t.replace(/\bno mundo até\b/gi,'do mundo');
+  t=t.replace(/\bser a maior empresa do mundo por valor de mercado\b/gi,'ser a maior empresa do mundo');
+  t=t.replace(/\bdo mundo por valor de mercado\b/gi,'do mundo');
+  // "Apple CEO" e "CEO of Apple" -> "CEO da Apple"
+  t=t.replace(/\b([A-Z][A-Za-z0-9&\.\-]+)\s+CEO\b/g,(m,company)=>`CEO da ${company}`);
+  t=t.replace(/\bCEO\s+of\s+([A-Z][A-Za-z0-9&\.\-]+)\b/gi,(m,company)=>`CEO da ${company}`);
+  // "deport" -> "deportar"
+  t=t.replace(/\bdeport(ation|ations)?\b/gi,(m,s)=> s? (s.toLowerCase()==='ation'?'deportação':'deportações') : 'deportar');
+  // Ajuste de ordem: "Vai Bitcoin ..." -> "O Bitcoin vai ..."
+  t=t.replace(/^Vai\s+Bitcoin\b/i,'O Bitcoin vai');
+  t=t.replace(/^Vai\s+Inflação\b/i,'A inflação vai');
+  // "atingir mais de X%" -> "ultrapassar X%"
+  t=t.replace(/\batingir\s+mais\s+de\s+(\d+(?:,\d+)?)%/gi,(m,v)=>`ultrapassar ${v}%`);
+  t=t.replace(/^Vai\s+Donald Trump\b/i,'Donald Trump vai');
+  t=t.replace(/^Vai\s+Trump\b/i,'Trump vai');
+  t=t.replace(/^Vai\s+Apple\b/i,'A Apple vai');
+  t=t.replace(/^Vai\s+Tim Cook\b/i,'Tim Cook vai');
+  t=t.replace(/\bvai\s+be\b/gi,'vai ser');
+  t=t.replace(/^Vai\s+Putin\b/i,'Putin vai');
+  t=t.replace(/^Vai\s+Os EUA\b/i,'Os EUA vão');
+  // "Vai <Nome> deportar" -> "<Nome> vai deportar"
+  t=t.replace(/^Vai\s+([A-Z][A-Za-z\.']+(?:\s+[A-Z][A-Za-z\.']+)*)\s+deportar\b/i,(m,who)=>`${who} vai deportar`);
+  // "Vai <Nome> be ..." -> "<Nome> vai ser ..."
+  t=t.replace(/^Vai\s+([A-Z][A-Za-z0-9&\.\-]+)\s+be\b/i,(m,who)=>`${who} vai ser`);
+  // "Vai <Nome> have ..." -> "<Nome> vai ter ..."
+  t=t.replace(/^Vai\s+([A-Z][A-Za-z0-9&\.\-]+)\s+have\b/i,(m,who)=>`${who} vai ter`);
+  t=t.replace(/^Vai\s+Google\b/i,'O Google vai');
+  t=t.replace(/^Vai\s+Microsoft\b/i,'A Microsoft vai');
+  t=t.replace(/^Vai\s+Alphabet\b/i,'O Alphabet vai');
+  // "em the world" -> "no mundo"
+  t=t.replace(/\bem\s+the\s+world\b/gi,'no mundo');
+  // Correções específicas
+  t=t.replace(/\bse junta ao OTAN\b/gi,'se junta à OTAN');
+  t=t.replace(/\bEUA recessão\b/gi,'Recessão nos EUA');
+  t=t.replace(/\bon\s+31\s+de\s+Dez\b/gi,'em 31 de Dez');
+  // Correção específica para frases de market cap
+  t=t.replace(/\bser a maior empresa no mundo até valor de mercado em (\w+)\s+(\d+)\?/gi,(m,mes,dia)=>`ser a maior empresa do mundo em ${dia} de ${mes}?`);
+  t=t.replace(/\ba maior empresa no mundo até valor de mercado em (\w+)\s+(\d+)\?/gi,(m,mes,dia)=>`a maior empresa do mundo em ${dia} de ${mes}?`);
+  t=t.replace(/\bser a maior empresa do mundo por valor de mercado em (\w+)\s+(\d+)\?/gi,(m,mes,dia)=>`ser a maior empresa do mundo em ${dia} de ${mes}?`);
+  t=t.replace(/\ba maior empresa do mundo por valor de mercado em (\w+)\s+(\d+)\?/gi,(m,mes,dia)=>`a maior empresa do mundo em ${dia} de ${mes}?`);
+  // Contrações de preposição + artigo com países
+  t=t.replace(/\bde Rússia\b/gi,'da Rússia');
+  t=t.replace(/\bde Ucrânia\b/gi,'da Ucrânia');
+  t=t.replace(/\bde União Europeia\b/gi,'da União Europeia');
+  t=t.replace(/\bde Estados Unidos\b/gi,'dos Estados Unidos');
+  t=t.replace(/\bde Reino Unido\b/gi,'do Reino Unido');
+  // Ajustes para "de Presidente de <país>"
+  t=t.replace(/\bde Presidente de Rússia\b/gi,'de Presidente da Rússia');
+  t=t.replace(/\bde Presidente de Ucrânia\b/gi,'de Presidente da Ucrânia');
+  t=t.replace(/\bde Presidente de Estados Unidos\b/gi,'de Presidente dos Estados Unidos');
+  t=t.replace(/\bde Presidente de Reino Unido\b/gi,'de Presidente do Reino Unido');
+  // Limpa espaços duplos
+  t=t.replace(/\s{2,}/g,' ').trim();
+  // Capitaliza primeira letra
+  try{t=t.charAt(0).toUpperCase()+t.slice(1);}catch{}
+  return t;}
+const makeCard=d=>{
+  return `<div class="card"><div class="subtitle">${d.cat.toUpperCase()}</div><div class="title"><span class="t">${d.title}</span></div><div class="row" data-p1="${d.p1}" data-p2="${d.p2}"><div class="opt yes"><span>${d.o1d}</span><span>${d.p1}%</span></div><div class="opt no"><span>${d.o2d}</span><span>${d.p2}%</span></div></div></div>`;
+};
+
+function layoutCards(){
+  try{
+    const cards=document.querySelectorAll('.card');
+    for(const card of cards){
+      const titleEl=card.querySelector('.title');
+      const rowEl=card.querySelector('.row');
+      if(!titleEl||!rowEl) continue;
+      
+      // Define largura da row igual à largura do título para centralizar perfeitamente
+      const titleSpan=titleEl.querySelector('.t') || titleEl;
+      const titleWidth=Math.ceil(titleSpan.getBoundingClientRect().width);
+      
+      // Aplica a largura exata do título na row
+      rowEl.style.width=titleWidth+'px';
+      rowEl.style.margin='6px auto 0 auto';
+    }
+  }catch(e){console.error('layout error',e);}
+}
+async function loadMarkets(){const res=await fetch(API_URL);if(!res.ok) throw new Error(res.status);const raw=await res.json();return raw.map(m=>{try{const text=(m.question||"")+" "+(m.slug||"");const cat=detectCat(text);if(!cat) return null;const outs=Array.isArray(m.outcomes)?m.outcomes:JSON.parse(m.outcomes);const prices=Array.isArray(m.outcomePrices)?m.outcomePrices:JSON.parse(m.outcomePrices);if(outs.length<2||prices.length<2) return null;const o1=outs[0],o2=outs[1];return{cat,title:translateTitle((m.question||m.slug.replace(/-/g," ")).trim()),o1:o1,o2:o2,o1d:translateOutcome(o1),o2d:translateOutcome(o2),p1:pct(prices[0]),p2:pct(prices[1])};}catch{return null;}}).filter(Boolean);}function balance(list){const buckets=Object.fromEntries(CATS.map(k=>[k,[]]));list.forEach(x=>{if(buckets[x.cat]) buckets[x.cat].push(x);});const min=Math.min(...CATS.map(k=>buckets[k].length));const ordered=[];for(let i=0;i<min;i++){for(const k of CATS){ordered.push(buckets[k][i]);}}return ordered;}
+async function build(){const banner=document.getElementById('banner');try{let markets=await loadMarkets();if(!markets.length){banner.innerHTML='<div style="color:#B91C1C;font-weight:600;padding:10px">⚠️ Nenhum mercado disponível agora.</div>';return;}markets=balance(markets);document.getElementById('track').innerHTML=[...markets,...markets].map(makeCard).join('');layoutCards();}catch(e){console.error('Polymarket fetch error',e);banner.innerHTML='<div style="color:#B91C1C;font-weight:600;padding:10px">⚠️ Não foi possível carregar as cotações agora.</div>';}}
+build();setInterval(build,10*60*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(build,1000);});
+</script>
+</body>
+</html>
+
+
