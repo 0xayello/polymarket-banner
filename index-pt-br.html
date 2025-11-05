@@ -5,19 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Banner de Cotações do Polymarket</title>
 <style>
-html,body{margin:0;padding:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;}
-:root{--divider:#E5E7EB;--yes:#00D578;--no:#FF453A;--text:#111827;--text-muted:#6B7280;--banner-h:100px;--scroll-duration:180s;}
-#banner{position:absolute;inset:0 auto auto 0;height:var(--banner-h);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);background:rgba(249,250,251,.85);box-shadow:0 8px 30px rgba(0,0,0,.08);overflow:hidden;}
-.track{display:flex;height:100%;align-items:center;animation:scroll var(--scroll-duration) linear infinite;will-change:transform;}
+html,body{margin:0;padding:0;background:#0d0d0d;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;}
+:root{--destructive:#ef4444;--destructive-bg:rgba(239,68,68,0.2);--success:#22c55e;--success-bg:rgba(34,197,94,0.2);--primary:#22c55e;--border:#374151;--text:#f3f4f6;--text-muted:#9ca3af;--bg-gray:#374151;--scroll-duration:120s;}
+#banner{position:fixed;inset:0;display:flex;align-items:center;overflow:hidden;background:#0d0d0d;}
+.track{display:flex;align-items:center;white-space:nowrap;animation:scroll var(--scroll-duration) linear infinite;will-change:transform;padding:10px 0 10px 144px;}
 @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 #banner:hover .track{animation-play-state:paused;}
-.card{flex-shrink:0;display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:260px;width:max-content;height:100%;padding:12px 20px;border-right:1px solid var(--divider);box-sizing:border-box;}
-.subtitle{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%;}
-.title{font-size:16px;font-weight:700;line-height:1.25;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;width:100%;}
-.title .t{display:inline-block;}
-.row{display:flex;gap:10px;margin-top:4px;justify-content:flex-start;}
-.opt{flex:1;display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-radius:8px;font-weight:700;color:#fff;font-size:15px;white-space:nowrap;user-select:none;}
-.yes{background:var(--yes);} .no{background:var(--no);}  
+.card{display:inline-flex;align-items:center;gap:12px;padding:0 16px;border-right:1px solid var(--border);text-decoration:none;transition:opacity .2s;flex-shrink:0;}
+.card:hover{opacity:0.9;}
+.icon{width:32px;height:32px;border-radius:6px;overflow:hidden;flex-shrink:0;background:var(--bg-gray);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:18px;font-weight:bold;line-height:1;}
+.icon img{width:100%;height:100%;object-fit:cover;}
+.content{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0;flex:1;}
+.category{color:var(--text-muted);font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:350px;line-height:1.2;}
+.title{color:var(--text);font-size:14px;font-weight:400;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:350px;transition:color .2s;}
+.card:hover .title{color:var(--primary);}
+.badge{display:flex;align-items:baseline;gap:6px;padding:4px 12px;border-radius:6px;flex-shrink:0;}
+.badge-low{background:var(--destructive-bg);color:var(--destructive);}
+.badge-high{background:var(--success-bg);color:var(--success);}
+.badge-percent{font-weight:700;font-size:14px;line-height:1;}
+.badge-label{font-size:12px;opacity:0.8;font-weight:500;line-height:1;}
 </style>
 </head>
 <body>
@@ -25,12 +31,13 @@ html,body{margin:0;padding:0;background:transparent;font-family:-apple-system,Bl
 <script>
 const API_URL="https://poly-proxy.henriqueparadigma.workers.dev/markets?limit=300&closed=false&order_by=volume&order_direction=desc";
 const KEYWORDS={
-  cripto:["crypto","bitcoin","btc","eth","ethereum"],
+  cripto:["crypto","bitcoin","btc","eth","ethereum","solana","xrp","monad","stable","lighter","megaeth"],
   tech:["tech","ai","nvidia","apple","microsoft"],
   mundo:["world","iran","russia","ukraine","china","israel"],
   economia:["economy","inflation","gdp","recession"],
   trump:["trump"]
 };
+const CAT_NAMES={cripto:"CRIPTO",tech:"TECH",mundo:"MUNDO",economia:"ECONOMIA",trump:"TRUMP"};
 const CATS=Object.keys(KEYWORDS);
 const pct=v=>Math.round(parseFloat(v||0)*100);
 function escapeRegExp(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
@@ -207,30 +214,34 @@ function translateTitle(text){if(!text) return "";let t=String(text);
   // Capitaliza primeira letra
   try{t=t.charAt(0).toUpperCase()+t.slice(1);}catch{}
   return t;}
+function getIcon(market){
+  const q=(market.question||"").toLowerCase();
+  if(/bitcoin|btc/i.test(q)) return '₿';
+  if(/ethereum|eth/i.test(q)) return 'Ξ';
+  if(/solana|sol/i.test(q)) return '◎';
+  if(/xrp/i.test(q)) return 'X';
+  if(/monad/i.test(q)) return 'M';
+  return '●';
+}
 const makeCard=d=>{
-  return `<div class="card"><div class="subtitle">${d.cat.toUpperCase()}</div><div class="title"><span class="t">${d.title}</span></div><div class="row" data-p1="${d.p1}" data-p2="${d.p2}"><div class="opt yes"><span>${d.o1d}</span><span>${d.p1}%</span></div><div class="opt no"><span>${d.o2d}</span><span>${d.p2}%</span></div></div></div>`;
+  const badgeClass=d.p1>=50?'badge-high':'badge-low';
+  const icon=getIcon({question:d.question||d.title});
+  const catName=CAT_NAMES[d.cat]||d.cat.toUpperCase();
+  return `<a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="card">
+    <div class="icon">${icon}</div>
+    <div class="content">
+      <div class="category">${catName}</div>
+      <div class="title">${d.title}</div>
+    </div>
+    <div class="badge ${badgeClass}">
+      <span class="badge-percent">${d.p1}%</span>
+      <span class="badge-label">chance</span>
+    </div>
+  </a>`;
 };
 
-function layoutCards(){
-  try{
-    const cards=document.querySelectorAll('.card');
-    for(const card of cards){
-      const titleEl=card.querySelector('.title');
-      const rowEl=card.querySelector('.row');
-      if(!titleEl||!rowEl) continue;
-      
-      // Define largura da row igual à largura do título para centralizar perfeitamente
-      const titleSpan=titleEl.querySelector('.t') || titleEl;
-      const titleWidth=Math.ceil(titleSpan.getBoundingClientRect().width);
-      
-      // Aplica a largura exata do título na row
-      rowEl.style.width=titleWidth+'px';
-      rowEl.style.margin='6px auto 0 auto';
-    }
-  }catch(e){console.error('layout error',e);}
-}
-async function loadMarkets(){const res=await fetch(API_URL);if(!res.ok) throw new Error(res.status);const raw=await res.json();return raw.map(m=>{try{const text=(m.question||"")+" "+(m.slug||"");const cat=detectCat(text);if(!cat) return null;const outs=Array.isArray(m.outcomes)?m.outcomes:JSON.parse(m.outcomes);const prices=Array.isArray(m.outcomePrices)?m.outcomePrices:JSON.parse(m.outcomePrices);if(outs.length<2||prices.length<2) return null;const o1=outs[0],o2=outs[1];return{cat,title:translateTitle((m.question||m.slug.replace(/-/g," ")).trim()),o1:o1,o2:o2,o1d:translateOutcome(o1),o2d:translateOutcome(o2),p1:pct(prices[0]),p2:pct(prices[1])};}catch{return null;}}).filter(Boolean);}function balance(list){const buckets=Object.fromEntries(CATS.map(k=>[k,[]]));list.forEach(x=>{if(buckets[x.cat]) buckets[x.cat].push(x);});const min=Math.min(...CATS.map(k=>buckets[k].length));const ordered=[];for(let i=0;i<min;i++){for(const k of CATS){ordered.push(buckets[k][i]);}}return ordered;}
-async function build(){const banner=document.getElementById('banner');try{let markets=await loadMarkets();if(!markets.length){banner.innerHTML='<div style="color:#B91C1C;font-weight:600;padding:10px">⚠️ Nenhum mercado disponível agora.</div>';return;}markets=balance(markets);document.getElementById('track').innerHTML=[...markets,...markets].map(makeCard).join('');layoutCards();}catch(e){console.error('Polymarket fetch error',e);banner.innerHTML='<div style="color:#B91C1C;font-weight:600;padding:10px">⚠️ Não foi possível carregar as cotações agora.</div>';}}
+async function loadMarkets(){const res=await fetch(API_URL);if(!res.ok) throw new Error(res.status);const raw=await res.json();return raw.map(m=>{try{const text=(m.question||"")+" "+(m.slug||"");const cat=detectCat(text);if(!cat) return null;const outs=Array.isArray(m.outcomes)?m.outcomes:JSON.parse(m.outcomes);const prices=Array.isArray(m.outcomePrices)?m.outcomePrices:JSON.parse(m.outcomePrices);if(outs.length<2||prices.length<2) return null;return{cat,title:translateTitle((m.question||m.slug.replace(/-/g," ")).trim()),question:m.question,p1:pct(prices[0]),p2:pct(prices[1])};}catch{return null;}}).filter(Boolean);}function balance(list){const buckets=Object.fromEntries(CATS.map(k=>[k,[]]));list.forEach(x=>{if(buckets[x.cat]) buckets[x.cat].push(x);});const min=Math.min(...CATS.map(k=>buckets[k].length));const ordered=[];for(let i=0;i<min;i++){for(const k of CATS){ordered.push(buckets[k][i]);}}return ordered;}
+async function build(){const banner=document.getElementById('banner');try{let markets=await loadMarkets();if(!markets.length){banner.innerHTML='<div style="color:#ef4444;font-weight:600;padding:20px;text-align:center">⚠️ Nenhum mercado disponível agora.</div>';return;}markets=balance(markets);document.getElementById('track').innerHTML=[...markets,...markets].map(makeCard).join('');}catch(e){console.error('Polymarket fetch error',e);banner.innerHTML='<div style="color:#ef4444;font-weight:600;padding:20px;text-align:center">⚠️ Não foi possível carregar as cotações agora.</div>';}}
 build();setInterval(build,10*60*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(build,1000);});
 </script>
 </body>
