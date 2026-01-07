@@ -244,7 +244,23 @@ const makeCard=d=>{
   </a>`;
 };
 
-async function loadMarkets(){const res=await fetch(API_URL);if(!res.ok) throw new Error(res.status);const raw=await res.json();return raw.map(m=>{try{const text=(m.question||"")+" "+(m.slug||"");const cat=detectCat(text);if(!cat) return null;const outs=Array.isArray(m.outcomes)?m.outcomes:JSON.parse(m.outcomes);const prices=Array.isArray(m.outcomePrices)?m.outcomePrices:JSON.parse(m.outcomePrices);if(outs.length<2||prices.length<2) return null;return{cat,title:translateTitle((m.question||m.slug.replace(/-/g," ")).trim()),question:m.question,image:m.icon||m.image||null,p1:pct(prices[0]),p2:pct(prices[1])};}catch{return null;}}).filter(Boolean);}function balance(list){const buckets=Object.fromEntries(CATS.map(k=>[k,[]]));list.forEach(x=>{if(buckets[x.cat]) buckets[x.cat].push(x);});const min=Math.min(...CATS.map(k=>buckets[k].length));const ordered=[];for(let i=0;i<min;i++){for(const k of CATS){ordered.push(buckets[k][i]);}}return ordered;}
+async function loadMarkets(){const res=await fetch(API_URL);if(!res.ok) throw new Error(res.status);const raw=await res.json();return raw.map(m=>{try{const text=(m.question||"")+" "+(m.slug||"");const cat=detectCat(text);if(!cat) return null;const outs=Array.isArray(m.outcomes)?m.outcomes:JSON.parse(m.outcomes);const prices=Array.isArray(m.outcomePrices)?m.outcomePrices:JSON.parse(m.outcomePrices);if(outs.length<2||prices.length<2) return null;return{cat,title:translateTitle((m.question||m.slug.replace(/-/g," ")).trim()),question:m.question,image:m.icon||m.image||null,p1:pct(prices[0]),p2:pct(prices[1])};}catch{return null;}}).filter(Boolean);}
+function balance(list,maxItems=80){
+  const buckets=Object.fromEntries(CATS.map(k=>[k,[]]));
+  list.forEach(x=>{if(buckets[x.cat]) buckets[x.cat].push(x);});
+  const active=CATS.filter(k=>buckets[k].length);
+  if(!active.length) return [];
+  const ordered=[];
+  // Round-robin entre categorias que existirem; não “zera tudo” quando alguma categoria fica vazia.
+  while(ordered.length<maxItems && active.some(k=>buckets[k].length)){
+    for(const k of active){
+      const item=buckets[k].shift();
+      if(item) ordered.push(item);
+      if(ordered.length>=maxItems) break;
+    }
+  }
+  return ordered;
+}
 async function build(){const banner=document.getElementById('banner');try{let markets=await loadMarkets();if(!markets.length){banner.innerHTML='<div style="color:#ef4444;font-weight:600;padding:20px;text-align:center">⚠️ Nenhum mercado disponível agora.</div>';return;}markets=balance(markets);const polymarketLogo='<a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="polymarket-logo"><div class="polymarket-logo-icon">P</div><span>Polymarket</span></a>';document.getElementById('track').innerHTML=polymarketLogo+[...markets,...markets].map(makeCard).join('');}catch(e){console.error('Polymarket fetch error',e);banner.innerHTML='<div style="color:#ef4444;font-weight:600;padding:20px;text-align:center">⚠️ Não foi possível carregar as cotações agora.</div>';}}
 build();setInterval(build,10*60*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(build,1000);});
 </script>
