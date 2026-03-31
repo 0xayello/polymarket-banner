@@ -34,23 +34,38 @@ html,body{margin:0;padding:0;background:#0d0d0d;font-family:-apple-system,BlinkM
 <script>
 const API_URL="https://poly-proxy.henriqueparadigma.workers.dev/markets?limit=300&closed=false&order_by=volume&order_direction=desc";
 const KEYWORDS={
-  cripto:["crypto","bitcoin","btc","eth","ethereum","solana","xrp","monad","stable","lighter","megaeth"],
-  tech:["tech","ai","nvidia","apple","microsoft"],
-  mundo:["world","iran","russia","ukraine","china","israel"],
-  economia:["economy","inflation","gdp","recession"],
-  trump:["trump"]
+  cripto:["crypto","bitcoin","btc","eth","ethereum","solana","xrp","monad","stable","lighter","megaeth","token","blockchain","defi","nft","coinbase","binance","dogecoin","doge","cardano","ripple","altcoin","web3","litecoin","chainlink","uniswap","aave","tether","usdc","stablecoin","memecoin","layer 2"],
+  tech:["tech","ai","nvidia","apple","microsoft","google","alphabet","meta","amazon","tesla","openai","chatgpt","gpt","gemini","anthropic","semiconductor","chip","spacex","tiktok","robot","quantum","computing","autonomous","self-driving","starlink","deepseek","llm"],
+  mundo:["world war","iran","russia","ukraine","china","israel","taiwan","nato","ceasefire","invasion","nuclear","sanctions","gaza","palestine","hamas","hezbollah","north korea","syria","lebanon","venezuela","netanyahu","zelensky","putin","xi jinping","military","troops","missile","attack","peace deal","peace treaty","regime"],
+  economia:["economy","inflation","gdp","recession","fed rate","interest rate","federal reserve","stock market","s&p 500","nasdaq","dow jones","tariff","trade war","debt ceiling","jobs report","crude oil","commodity","gold price","real estate","housing market","market cap","earnings report","layoff","treasury","bond yield","forex","dollar index","oil price"],
+  trump:["trump","maga","mar-a-lago","melania","ivanka","executive order","pardon"],
+  politica:["election","senate","congress","governor","democrat","republican","nomination","presidential","vote","supreme court","scotus","legislation","impeach","resign","cabinet","veto","parliament","prime minister"],
+  esportes:["nba","nfl","mlb","nhl","fifa","world cup","champions league","premier league","super bowl","stanley cup","playoffs","nba finals","ufc","boxing","wimbledon","formula 1","f1","olympics","medal","qualify for","golden knights","oilers","senators","panthers","hurricanes","stars","rangers","bruins"],
+  entretenimento:["oscar","grammy","emmy","movie","album","gta","netflix","disney","spotify","concert","tour","celebrity","rihanna","drake","taylor swift","beyonce"]
 };
-const CAT_NAMES={cripto:"CRIPTO",tech:"TECH",mundo:"MUNDO",economia:"ECONOMIA",trump:"TRUMP"};
+const CAT_NAMES={cripto:"CRIPTO",tech:"TECH",mundo:"MUNDO",economia:"ECONOMIA",trump:"TRUMP",politica:"POLITICA",esportes:"ESPORTES",entretenimento:"ENTRETENIMENTO"};
 const CATS=Object.keys(KEYWORDS);
 const pct=v=>Math.max(1,Math.round(parseFloat(v||0)*100));
-function escapeRegExp(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
-function detectCat(text){const lower=text.toLowerCase();for(const c of CATS){for(const k of KEYWORDS[c]){const re=new RegExp(`\\b${escapeRegExp(k.toLowerCase())}\\b`,'i');if(re.test(lower)) return c;}}return null;}
+function detectCat(text){
+  const lower=text.toLowerCase();
+  for(const c of CATS){
+    for(const k of KEYWORDS[c]){
+      const kl=k.toLowerCase();
+      // Frases com espaço ou palavras longas: uses includes() direto
+      // Palavras curtas (≤5 chars) ou sem espaço: usa \b para evitar substring falso (ex: "ai" em "ukraine")
+      const match = (kl.includes(' ') || kl.length > 5)
+        ? lower.includes(kl)
+        : new RegExp('\\b'+kl+'\\b').test(lower);
+      if(match) return c;
+    }
+  }
+  return null;
+}
 function translateOutcome(text){if(!text) return "";const t=String(text).trim().toLowerCase();if(t==="yes") return "Sim";if(t==="no") return "Não";return text;}
 function translateTitle(text){if(!text) return "";let t=String(text);
   const rules=[
     [/\bJanuary\b/gi,'Janeiro'],[/\bFebruary\b/gi,'Fevereiro'],[/\bMarch\b/gi,'Março'],[/\bApril\b/gi,'Abril'],[/\bMay\b/gi,'Maio'],[/\bJune\b/gi,'Junho'],[/\bJuly\b/gi,'Julho'],[/\bAugust\b/gi,'Agosto'],[/\bSeptember\b/gi,'Setembro'],[/\bOctober\b/gi,'Outubro'],[/\bNovember\b/gi,'Novembro'],[/\bDecember\b/gi,'Dezembro'],
     [/\bWhite House\b/gi,'Casa Branca'],
-    [/\bbefore\b/gi,'antes de'],
     [/\bElections\b/gi,'Eleições'],[/\bElection\b/gi,'Eleição'],
     [/\bVotes\b/gi,'Votos'],[/\bVote\b/gi,'Voto'],[/\bVoting\b/gi,'Votação'],
     [/\bPrimary\b/gi,'Primária'],[/\bRunoff\b/gi,'Segundo turno'],[/\bCaucus\b/gi,'Prévia'],
@@ -62,7 +77,7 @@ function translateTitle(text){if(!text) return "";let t=String(text);
     [/\bInterest Rates\b/gi,'Juros'],[/\bInterest Rate\b/gi,'Juros'],[/\bRate Hikes\b/gi,'Alta de juros'],[/\bRate Hike\b/gi,'Alta de juros'],[/\bRate Cuts\b/gi,'Corte de juros'],[/\bRate Cut\b/gi,'Corte de juros'],
     [/\bFederal Reserve\b/gi,'Federal Reserve'],[/\bECB\b/gi,'BCE'],[/\bBank of England\b/gi,'Banco da Inglaterra'],
     [/\bSupreme Court\b/gi,'Suprema Corte'],[/\bSCOTUS\b/gi,'Suprema Corte (EUA)'],[/\bSupreme Leader\b/gi,'Líder Supremo'],
-    [/\bHouse\b/gi,'Câmara'],[/\bSenate\b/gi,'Senado'],[/\bCongress\b/gi,'Congresso'],[/\bParliament\b/gi,'Parlamento'],
+    [/\bthe House\b/gi,'a Câmara'],[/\bHouse of Representatives\b/gi,'Câmara dos Representantes'],[/\bSenate\b/gi,'Senado'],[/\bCongress\b/gi,'Congresso'],[/\bParliament\b/gi,'Parlamento'],
     [/\bEuropean Union\b/gi,'União Europeia'],[/\bEU\b/gi,'UE'],[/\bUnited Kingdom\b/gi,'Reino Unido'],[/\bUK\b/gi,'Reino Unido'],[/\bUnited States\b/gi,'Estados Unidos'],[/\bUSA?\b/gi,'EUA'],
     [/\bIran\b/gi,'Irã'],[/\bRussia\b/gi,'Rússia'],[/\bUkraine\b/gi,'Ucrânia'],
     [/\bMarkets\b/gi,'Mercados'],[/\bMarket\b/gi,'Mercado'],
@@ -70,14 +85,35 @@ function translateTitle(text){if(!text) return "";let t=String(text);
     [/\bout as\b/gi,'deixará o cargo de'],
     [/\breach\b/gi,'atingir'],[/\bHit\b/gi,'atingir'],[/\bwin\b/gi,'ganhar'],[/\blose\b/gi,'perder'],
     [/\bmore than\b/gi,'mais de'],[/\bless than\b/gi,'menos de'],[/\bat least\b/gi,'pelo menos'],[/\bat most\b/gi,'no máximo'],[/\bor more\b/gi,'ou mais'],[/\bor less\b/gi,'ou menos'],
-    [/\bIn\b/gi,'em'],[/\bOf\b/gi,'de'],
+    [/\bin the world\b/gi,'no mundo'],[/\bof the\b/gi,'do'],
     [/\bPresident\b/gi,'Presidente'],[/\bPrime Minister\b/gi,'Primeiro-ministro'],
     [/\bNobel\s+Peace\s+Prize\b/gi,'Prêmio Nobel da Paz'],
     [/\bjoins\b/gi,'se junta ao'],[/\bjoin\b/gi,'se juntar ao'],
     [/\bNATO\b/gi,'OTAN'],[/\brecession\b/gi,'recessão'],
     [/\bhave\s+the\s+top\b/gi,'ter o melhor'],[/\bAI\s+model\b/gi,'modelo de IA'],
     [/\bpeople\b/gi,'pessoas'],[/\bmil-\b/gi,'mil a '],
-    [/\bdip\s+to\b/gi,'cair para'],[/\bdrop\s+to\b/gi,'cair para']
+    [/\bdip\s+to\b/gi,'cair para'],[/\bdrop\s+to\b/gi,'cair para'],
+    [/\bTariffs?\b/gi,'Tarifa'],[/\bSanctions\b/gi,'Sanções'],[/\bSanction\b/gi,'Sanção'],
+    [/\bTroops\b/gi,'Tropas'],[/\bTreaty\b/gi,'Tratado'],[/\bGovernor\b/gi,'Governador'],
+    [/\bNominee\b/gi,'Indicado'],[/\bNomination\b/gi,'Indicação'],
+    [/\bChampionship\b/gi,'Campeonato'],[/\bPlayoffs\b/gi,'Playoffs'],[/\bFinals\b/gi,'Finais'],
+    [/\bRelease\b/gi,'Lançamento'],[/\bReleased\b/gi,'Lançado'],
+    [/\bBanned?\b/gi,'Banido'],[/\bAnnounce\b/gi,'Anunciar'],[/\bAnnounced\b/gi,'Anunciado'],
+    [/\bDefault\b/gi,'Calote'],[/\bBankruptcy\b/gi,'Falência'],
+    [/\bSurpass\b/gi,'ultrapassar'],[/\bExceed\b/gi,'ultrapassar'],[/\bSurpasses\b/gi,'ultrapassa'],[/\bExceeds\b/gi,'ultrapassa'],
+    [/\bby end of\b/gi,'até o final de'],[/\bby the end of\b/gi,'até o final de'],
+    [/\bthis year\b/gi,'este ano'],[/\bnext year\b/gi,'próximo ano'],
+    [/\bthis month\b/gi,'este mês'],[/\bnext month\b/gi,'próximo mês'],
+    [/\bqualify\b/gi,'se classificar'],[/\binvade\b/gi,'invadir'],
+    [/\bresign\b/gi,'renunciar'],[/\bimpeach\b/gi,'sofrer impeachment'],
+    [/\bcut rates\b/gi,'cortar os juros'],[/\braise rates\b/gi,'elevar os juros'],
+    [/\bthe Fed\b/gi,'o Fed'],[/\bthe S&P\b/gi,'o S&P'],
+    [/\bremoved from office\b/gi,'afastado do cargo'],
+    [/\bstep down\b/gi,'renunciar'],[/\bsteps down\b/gi,'renuncia'],
+    [/\bWorld Cup\b/gi,'Copa do Mundo'],[/\bStanley Cup\b/gi,'Copa Stanley'],
+    [/\bSuper Bowl\b/gi,'Super Bowl'],[/\bChampions League\b/gi,'Champions League'],
+    [/\bNBA Finals\b/gi,'Finais da NBA'],[/\bNFL\b/gi,'NFL'],[/\bNBA\b/gi,'NBA'],
+    [/\bOscars?\b/gi,'Oscar'],[/\bGrammys?\b/gi,'Grammy']
   ];
   for(const [re,rep] of rules){t=t.replace(re,rep);} 
   // Ajustes de estruturas comuns
@@ -108,6 +144,8 @@ function translateTitle(text){if(!text) return "";let t=String(text);
   t=t.replace(/\b(até|em)\s+(Jan|Fev|Mar|Abr|Mai|Jun|Jul|Ago|Set|Out|Nov|Dez|Janeiro|Fevereiro|Março|Abril|Maio|Junho|Julho|Agosto|Setembro|Outubro|Novembro|Dezembro)\s+(\d{1,2})(?:,\s*(\d{4}))?/gi,(m,prep,mon,day,yr)=>{
     const monPT=monthAbbrev[mon]||mon;return prep + ' ' + day + ' de ' + monPT + (yr ? ' de ' + yr : '');
   });
+  // "before" genérico (após regras de data para não interferir)
+  t=t.replace(/\bbefore\b/gi,'antes de');
   // Padrao "X x Y Ceasefire" -> "Cessar-fogo entre X e Y"
   t=t.replace(/\b([A-Za-zÀ-ú'`´^\-\. ]+)\s*(?:x|vs\.?|\-|and)\s*([A-Za-zÀ-ú'`´^\-\. ]+)\s+Cease-?fire/gi,(m,a,b)=>`Cessar-fogo entre ${a.trim()} e ${b.trim()}`);
   // "<Nome> divorce em YYYY?" -> "<Nome> se divorciará em YYYY?"
@@ -170,27 +208,44 @@ function translateTitle(text){if(!text) return "";let t=String(text);
   t=t.replace(/\bCEO\s+of\s+([A-Z][A-Za-z0-9&\.\-]+)\b/gi,(m,company)=>`CEO da ${company}`);
   // "deport" -> "deportar"
   t=t.replace(/\bdeport(ation|ations)?\b/gi,(m,s)=> s? (s.toLowerCase()==='ation'?'deportação':'deportações') : 'deportar');
-  // Ajuste de ordem: "Vai Bitcoin ..." -> "O Bitcoin vai ..."
-  t=t.replace(/^Vai\s+Bitcoin\b/i,'O Bitcoin vai');
-  t=t.replace(/^Vai\s+Inflação\b/i,'A inflação vai');
   // "atingir mais de X%" -> "ultrapassar X%"
   t=t.replace(/\batingir\s+mais\s+de\s+(\d+(?:,\d+)?)%/gi,(m,v)=>`ultrapassar ${v}%`);
-  t=t.replace(/^Vai\s+Donald Trump\b/i,'Donald Trump vai');
-  t=t.replace(/^Vai\s+Trump\b/i,'Trump vai');
-  t=t.replace(/^Vai\s+Apple\b/i,'A Apple vai');
-  t=t.replace(/^Vai\s+Tim Cook\b/i,'Tim Cook vai');
-  t=t.replace(/\bvai\s+be\b/gi,'vai ser');
-  t=t.replace(/^Vai\s+Putin\b/i,'Putin vai');
+  // Ajuste de ordem: "Vai [Subject]" -> "[Subject] vai"
+  // Casos com artigo definido (masculino/feminino)
+  const artMasc=['Bitcoin','Google','Alphabet','Ethereum','Dogecoin','Nasdaq'];
+  const artFem=['Apple','Microsoft','Meta','Amazon','Tesla','Inflação','Recessão'];
+  for(const n of artMasc) t=t.replace(new RegExp(`^Vai\\s+${n}\\b`,'i'),`O ${n} vai`);
+  for(const n of artFem) t=t.replace(new RegExp(`^Vai\\s+${n}\\b`,'i'),`A ${n} vai`);
   t=t.replace(/^Vai\s+Os EUA\b/i,'Os EUA vão');
-  // "Vai <Nome> deportar" -> "<Nome> vai deportar"
-  t=t.replace(/^Vai\s+([A-Z][A-Za-z\.']+(?:\s+[A-Z][A-Za-z\.']+)*)\s+deportar\b/i,(m,who)=>`${who} vai deportar`);
-  // "Vai <Nome> be ..." -> "<Nome> vai ser ..."
-  t=t.replace(/^Vai\s+([A-Z][A-Za-z0-9&\.\-]+)\s+be\b/i,(m,who)=>`${who} vai ser`);
-  // "Vai <Nome> have ..." -> "<Nome> vai ter ..."
-  t=t.replace(/^Vai\s+([A-Z][A-Za-z0-9&\.\-]+)\s+have\b/i,(m,who)=>`${who} vai ter`);
-  t=t.replace(/^Vai\s+Google\b/i,'O Google vai');
-  t=t.replace(/^Vai\s+Microsoft\b/i,'A Microsoft vai');
-  t=t.replace(/^Vai\s+Alphabet\b/i,'O Alphabet vai');
+  t=t.replace(/^Vai\s+A inflação\b/i,'A inflação vai');
+  // Fallback genérico: "Vai <Nome(s)> <verbo>" -> "<Nome(s)> vai <verbo>"
+  // IMPORTANTE: sem flag /i para que [A-Z] só case letras maiúsculas (início de nome próprio)
+  t=t.replace(/^Vai\s+([A-Z][A-Za-zÀ-ú\.']+(?:\s+[A-Z][A-Za-zÀ-ú\.']+)*)\s+/,(m,who)=>`${who} vai `);
+  // "Vai the/o/a [Nome Próprio]" → "O/A [Nome Próprio] vai"
+  t=t.replace(/^Vai\s+the\s+([A-Z][A-Za-zÀ-ú\.']+(?:\s+[A-Z][A-Za-zÀ-ú\.']+)*)\s+/,(m,who)=>`O ${who} vai `);
+  t=t.replace(/^Vai\s+o\s+([A-Z][A-Za-zÀ-ú\.']+(?:\s+[A-Z][A-Za-zÀ-ú\.']+)*)\s+/,(m,who)=>`O ${who} vai `);
+  t=t.replace(/^Vai\s+a\s+([A-Z][A-Za-zÀ-ú\.']+(?:\s+[A-Z][A-Za-zÀ-ú\.']+)*)\s+/,(m,who)=>`A ${who} vai `);
+  // "vai be" → "vai ser" (APÓS o reordenamento do Vai)
+  t=t.replace(/\bvai\s+be\b/gi,'vai ser');
+  // Verbos comuns não traduzidos que podem aparecer após "vai"
+  t=t.replace(/\bvai\s+invade\b/gi,'vai invadir');
+  t=t.replace(/\bvai\s+qualify\b/gi,'vai se classificar');
+  t=t.replace(/\bvai\s+cut\s+rates\b/gi,'vai cortar os juros');
+  t=t.replace(/\bvai\s+raise\s+rates\b/gi,'vai elevar os juros');
+  t=t.replace(/\bvai\s+resign\b/gi,'vai renunciar');
+  t=t.replace(/\bvai\s+resign\b/gi,'vai renunciar');
+  t=t.replace(/\bvai\s+run\b/gi,'vai concorrer');
+  t=t.replace(/\bvai\s+survive\b/gi,'vai sobreviver');
+  t=t.replace(/\bvai\s+collapse\b/gi,'vai colapsar');
+  t=t.replace(/\bvai\s+default\b/gi,'vai dar calote');
+  t=t.replace(/\bvai\s+ban\b/gi,'vai proibir');
+  // Artigo "the" solto após tradução parcial
+  t=t.replace(/\bganhar\s+the\b/gi,'ganhar a');
+  t=t.replace(/\bvai\s+the\b/gi,'vai o');
+  t=t.replace(/\bpara\s+the\b/gi,'para o');
+  // "Vai the Fed" → "O Fed vai"
+  t=t.replace(/^Vai\s+the\s+Fed\b/i,'O Fed vai');
+  t=t.replace(/^Vai\s+the\s+([A-Z][A-Za-z]+)\b/i,(m,who)=>`O ${who} vai`);
   // "em the world" -> "no mundo"
   t=t.replace(/\bem\s+the\s+world\b/gi,'no mundo');
   // Correções específicas
@@ -213,7 +268,8 @@ function translateTitle(text){if(!text) return "";let t=String(text);
   t=t.replace(/\bde Presidente de Ucrânia\b/gi,'de Presidente da Ucrânia');
   t=t.replace(/\bde Presidente de Estados Unidos\b/gi,'de Presidente dos Estados Unidos');
   t=t.replace(/\bde Presidente de Reino Unido\b/gi,'de Presidente do Reino Unido');
-  // Limpa espaços duplos
+  // Limpa espaços duplos e espaço antes de "?"
+  t=t.replace(/\s+\?/g,'?');
   t=t.replace(/\s{2,}/g,' ').trim();
   // Capitaliza primeira letra
   try{t=t.charAt(0).toUpperCase()+t.slice(1);}catch{}
@@ -245,7 +301,13 @@ const makeCard=d=>{
   </a>`;
 };
 
-async function loadMarkets(){const res=await fetch(API_URL);if(!res.ok) throw new Error(res.status);const raw=await res.json();return raw.map(m=>{try{const text=(m.question||"")+" "+(m.slug||"");const cat=detectCat(text);if(!cat) return null;const outs=Array.isArray(m.outcomes)?m.outcomes:JSON.parse(m.outcomes);const prices=Array.isArray(m.outcomePrices)?m.outcomePrices:JSON.parse(m.outcomePrices);if(outs.length<2||prices.length<2) return null;return{cat,title:translateTitle((m.question||m.slug.replace(/-/g," ")).trim()),question:m.question,image:m.icon||m.image||null,p1:pct(prices[0]),p2:pct(prices[1])};}catch{return null;}}).filter(Boolean);}
+async function loadMarkets(){
+  const res=await fetch(API_URL);
+  if(!res.ok) throw new Error(res.status);
+  const raw=await res.json();
+  if(!raw.length) throw new Error('No markets returned');
+  return raw.map(m=>{try{const text=(m.question||"")+" "+(m.slug||"");const cat=detectCat(text);if(!cat) return null;const outs=Array.isArray(m.outcomes)?m.outcomes:JSON.parse(m.outcomes);const prices=Array.isArray(m.outcomePrices)?m.outcomePrices:JSON.parse(m.outcomePrices);if(outs.length<2||prices.length<2) return null;return{cat,title:translateTitle((m.question||m.slug.replace(/-/g," ")).trim()),question:m.question,image:m.icon||m.image||null,p1:pct(prices[0]),p2:pct(prices[1])};}catch{return null;}}).filter(Boolean);
+}
 function balance(list,maxItems=80){
   const buckets=Object.fromEntries(CATS.map(k=>[k,[]]));
   list.forEach(x=>{if(buckets[x.cat]) buckets[x.cat].push(x);});
@@ -262,7 +324,45 @@ function balance(list,maxItems=80){
   }
   return ordered;
 }
-async function build(){const banner=document.getElementById('banner');try{let markets=await loadMarkets();if(!markets.length){banner.innerHTML='<div style="color:#ef4444;font-weight:600;padding:20px;text-align:center">⚠️ Nenhum mercado disponível agora.</div>';return;}markets=balance(markets);const polymarketLogo='<a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="polymarket-logo"><div class="polymarket-logo-icon">P</div><span>Polymarket</span></a>';document.getElementById('track').innerHTML=polymarketLogo+[...markets,...markets].map(makeCard).join('');}catch(e){console.error('Polymarket fetch error',e);banner.innerHTML='<div style="color:#ef4444;font-weight:600;padding:20px;text-align:center">⚠️ Não foi possível carregar as cotações agora.</div>';}}
+async function build(){
+  const banner=document.getElementById('banner');
+  try{
+    let markets=await loadMarkets();
+    if(!markets.length){
+      // Tenta usar cache se API não retornou nada
+      const cached=localStorage.getItem('polymarket_cache');
+      if(cached){markets=JSON.parse(cached);console.warn('[Banner] API vazia, usando cache');}
+      else{banner.innerHTML='<div style="color:#ef4444;font-weight:600;padding:20px;text-align:center">⚠️ Nenhum mercado disponível agora.</div>';return;}
+    }
+    markets=balance(markets);
+    // Salva no cache para fallback
+    try{localStorage.setItem('polymarket_cache',JSON.stringify(markets));}catch{}
+    // Log de diagnóstico
+    const catCount={};markets.forEach(m=>{catCount[m.cat]=(catCount[m.cat]||0)+1;});
+    console.log(`[Banner] ${markets.length} mercados:`,catCount);
+    // Scroll dinâmico: ~2s por card
+    const duration=Math.max(30,markets.length*2);
+    document.documentElement.style.setProperty('--scroll-duration',duration+'s');
+    const polymarketLogo='<a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="polymarket-logo"><div class="polymarket-logo-icon">P</div><span>Polymarket</span></a>';
+    document.getElementById('track').innerHTML=polymarketLogo+[...markets,...markets].map(makeCard).join('');
+  }catch(e){
+    console.error('Polymarket fetch error',e);
+    // Tenta usar cache em caso de erro
+    const cached=localStorage.getItem('polymarket_cache');
+    if(cached){
+      try{
+        const markets=JSON.parse(cached);
+        console.warn('[Banner] Erro na API, usando cache com',markets.length,'mercados');
+        const duration=Math.max(30,markets.length*2);
+        document.documentElement.style.setProperty('--scroll-duration',duration+'s');
+        const polymarketLogo='<a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="polymarket-logo"><div class="polymarket-logo-icon">P</div><span>Polymarket</span></a>';
+        document.getElementById('track').innerHTML=polymarketLogo+[...markets,...markets].map(makeCard).join('');
+        return;
+      }catch{}
+    }
+    banner.innerHTML='<div style="color:#ef4444;font-weight:600;padding:20px;text-align:center">⚠️ Não foi possível carregar as cotações agora.</div>';
+  }
+}
 build();setInterval(build,10*60*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(build,1000);});
 </script>
 </body>
