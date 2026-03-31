@@ -104,11 +104,16 @@ function translateTitle(text){if(!text) return "";let t=String(text);
     [/\bby end of\b/gi,'até o final de'],[/\bby the end of\b/gi,'até o final de'],
     [/\bthis year\b/gi,'este ano'],[/\bnext year\b/gi,'próximo ano'],
     [/\bthis month\b/gi,'este mês'],[/\bnext month\b/gi,'próximo mês'],
-    [/\bqualify\b/gi,'se classificar'],[/\binvade\b/gi,'invadir'],
+    [/\bqualify\b/gi,'se classificar'],[/\binvades?\b/gi,'invadir'],
     [/\bresign\b/gi,'renunciar'],[/\bimpeach\b/gi,'sofrer impeachment'],
     [/\bcut rates\b/gi,'cortar os juros'],[/\braise rates\b/gi,'elevar os juros'],
     [/\bthe Fed\b/gi,'o Fed'],[/\bthe S&P\b/gi,'o S&P'],
     [/\bremoved from office\b/gi,'afastado do cargo'],
+    [/\bPresidential\b/gi,'Presidencial'],[/\bPresidency\b/gi,'Presidência'],
+    [/\bDemocratic\b/gi,'Democrática'],[/\bDemocrat\b/gi,'Democrata'],
+    [/\bRepublican\b/gi,'Republicana'],
+    [/\bagain\b/gi,'novamente'],[/\bfor the\b/gi,'para a'],
+    [/\bfor a\b/gi,'para uma'],[/\bof a\b/gi,'de uma'],
     [/\bstep down\b/gi,'renunciar'],[/\bsteps down\b/gi,'renuncia'],
     [/\bWorld Cup\b/gi,'Copa do Mundo'],[/\bStanley Cup\b/gi,'Copa Stanley'],
     [/\bSuper Bowl\b/gi,'Super Bowl'],[/\bChampions League\b/gi,'Champions League'],
@@ -212,15 +217,16 @@ function translateTitle(text){if(!text) return "";let t=String(text);
   t=t.replace(/\batingir\s+mais\s+de\s+(\d+(?:,\d+)?)%/gi,(m,v)=>`ultrapassar ${v}%`);
   // Ajuste de ordem: "Vai [Subject]" -> "[Subject] vai"
   // Casos com artigo definido (masculino/feminino)
-  const artMasc=['Bitcoin','Google','Alphabet','Ethereum','Dogecoin','Nasdaq'];
-  const artFem=['Apple','Microsoft','Meta','Amazon','Tesla','Inflação','Recessão'];
+  const artMasc=['Bitcoin','Google','Alphabet','Ethereum','Dogecoin','Nasdaq','Fed'];
+  const artFem=['Apple','Microsoft','Meta','Amazon','Tesla','Inflação','Recessão','China','Rússia','Ucrânia'];
   for(const n of artMasc) t=t.replace(new RegExp(`^Vai\\s+${n}\\b`,'i'),`O ${n} vai`);
   for(const n of artFem) t=t.replace(new RegExp(`^Vai\\s+${n}\\b`,'i'),`A ${n} vai`);
   t=t.replace(/^Vai\s+Os EUA\b/i,'Os EUA vão');
   t=t.replace(/^Vai\s+A inflação\b/i,'A inflação vai');
   // Fallback genérico: "Vai <Nome(s)> <verbo>" -> "<Nome(s)> vai <verbo>"
   // IMPORTANTE: sem flag /i para que [A-Z] só case letras maiúsculas (início de nome próprio)
-  t=t.replace(/^Vai\s+([A-Z][A-Za-zÀ-ú\.']+(?:\s+[A-Z][A-Za-zÀ-ú\.']+)*)\s+/,(m,who)=>`${who} vai `);
+  // Inclui hífen no padrão de nome para capturar "Ocasio-Cortez", "Al-Assad", etc.
+  t=t.replace(/^Vai\s+([A-Z][A-Za-zÀ-ú\.'\-]+(?:\s+[A-Z][A-Za-zÀ-ú\.'\-]+)*)\s+/,(m,who)=>`${who} vai `);
   // "Vai the/o/a [Nome Próprio]" → "O/A [Nome Próprio] vai"
   t=t.replace(/^Vai\s+the\s+([A-Z][A-Za-zÀ-ú\.']+(?:\s+[A-Z][A-Za-zÀ-ú\.']+)*)\s+/,(m,who)=>`O ${who} vai `);
   t=t.replace(/^Vai\s+o\s+([A-Z][A-Za-zÀ-ú\.']+(?:\s+[A-Z][A-Za-zÀ-ú\.']+)*)\s+/,(m,who)=>`O ${who} vai `);
@@ -228,7 +234,7 @@ function translateTitle(text){if(!text) return "";let t=String(text);
   // "vai be" → "vai ser" (APÓS o reordenamento do Vai)
   t=t.replace(/\bvai\s+be\b/gi,'vai ser');
   // Verbos comuns não traduzidos que podem aparecer após "vai"
-  t=t.replace(/\bvai\s+invade\b/gi,'vai invadir');
+  t=t.replace(/\bvai\s+invades?\b/gi,'vai invadir');
   t=t.replace(/\bvai\s+qualify\b/gi,'vai se classificar');
   t=t.replace(/\bvai\s+cut\s+rates\b/gi,'vai cortar os juros');
   t=t.replace(/\bvai\s+raise\s+rates\b/gi,'vai elevar os juros');
@@ -239,10 +245,17 @@ function translateTitle(text){if(!text) return "";let t=String(text);
   t=t.replace(/\bvai\s+collapse\b/gi,'vai colapsar');
   t=t.replace(/\bvai\s+default\b/gi,'vai dar calote');
   t=t.replace(/\bvai\s+ban\b/gi,'vai proibir');
+  // Reordena "ganhar [a] YYYY EUA Presidencial Eleição" → "ganhar a Eleição Presidencial dos EUA de YYYY"
+  // Nota: sem \b final pois "Eleição" termina com acento (quebra \b em JS)
   // Artigo "the" solto após tradução parcial
   t=t.replace(/\bganhar\s+the\b/gi,'ganhar a');
+  // Reordena APÓS "the" → "a": "ganhar a YYYY EUA Presidencial Eleição" → forma correta
+  t=t.replace(/\bganhar\s+(?:a\s+)?(\d{4})\s+EUA\s+Presidencial\s+Eleição/gi,(m,yr)=>`ganhar a Eleição Presidencial dos EUA de ${yr}`);
+  t=t.replace(/\bganhar\s+(?:a\s+)?(\d{4})\s+(?:Estados Unidos|EUA)\s+Eleição/gi,(m,yr)=>`ganhar a Eleição dos EUA de ${yr}`);
+  // "ganhar a 2028 Democrática Presidencial Indicação" → "ganhar a Indicação Presidencial Democrática de 2028"
+  t=t.replace(/\bganhar\s+(?:a\s+)?(\d{4})\s+Democr[áa]tica\s+Presidencial\s+Indica[çc][ãa]o/gi,(_,yr)=>`ganhar a Indicação Presidencial Democrática de ${yr}`);
   t=t.replace(/\bvai\s+the\b/gi,'vai o');
-  t=t.replace(/\bpara\s+the\b/gi,'para o');
+  t=t.replace(/\bpara\s+the\b/gi,'para a');
   // "Vai the Fed" → "O Fed vai"
   t=t.replace(/^Vai\s+the\s+Fed\b/i,'O Fed vai');
   t=t.replace(/^Vai\s+the\s+([A-Z][A-Za-z]+)\b/i,(m,who)=>`O ${who} vai`);
@@ -341,7 +354,7 @@ async function build(){
     const catCount={};markets.forEach(m=>{catCount[m.cat]=(catCount[m.cat]||0)+1;});
     console.log(`[Banner] ${markets.length} mercados:`,catCount);
     // Scroll dinâmico: ~2s por card
-    const duration=Math.max(30,markets.length*2);
+    const duration=Math.max(45,markets.length*3);
     document.documentElement.style.setProperty('--scroll-duration',duration+'s');
     const polymarketLogo='<a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="polymarket-logo"><div class="polymarket-logo-icon">P</div><span>Polymarket</span></a>';
     document.getElementById('track').innerHTML=polymarketLogo+[...markets,...markets].map(makeCard).join('');
@@ -353,7 +366,7 @@ async function build(){
       try{
         const markets=JSON.parse(cached);
         console.warn('[Banner] Erro na API, usando cache com',markets.length,'mercados');
-        const duration=Math.max(30,markets.length*2);
+        const duration=Math.max(45,markets.length*3);
         document.documentElement.style.setProperty('--scroll-duration',duration+'s');
         const polymarketLogo='<a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="polymarket-logo"><div class="polymarket-logo-icon">P</div><span>Polymarket</span></a>';
         document.getElementById('track').innerHTML=polymarketLogo+[...markets,...markets].map(makeCard).join('');
