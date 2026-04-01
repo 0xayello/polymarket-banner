@@ -118,11 +118,38 @@ function translateTitle(text){if(!text) return "";let t=String(text);
     [/\bWorld Cup\b/gi,'Copa do Mundo'],[/\bStanley Cup\b/gi,'Copa Stanley'],
     [/\bSuper Bowl\b/gi,'Super Bowl'],[/\bChampions League\b/gi,'Champions League'],
     [/\bNBA Finals\b/gi,'Finais da NBA'],[/\bNFL\b/gi,'NFL'],[/\bNBA\b/gi,'NBA'],
-    [/\bOscars?\b/gi,'Oscar'],[/\bGrammys?\b/gi,'Grammy']
+    [/\bOscars?\b/gi,'Oscar'],[/\bGrammys?\b/gi,'Grammy'],
+    // Temporal
+    [/\bone\s+day\s+after\b/gi,'um dia após'],
+    [/\btwo\s+days?\s+after\b/gi,'dois dias após'],
+    [/\bafter\b/gi,'após'],
+    [/\bdays\b/gi,'dias'],[/\bday\b/gi,'dia'],
+    [/\bweeks\b/gi,'semanas'],[/\bweek\b/gi,'semana'],
+    [/\bhours\b/gi,'horas'],[/\bhour\b/gi,'hora'],
+    [/\bmonths\b/gi,'meses'],[/\bmonth\b/gi,'mês'],
+    [/\bquarters\b/gi,'trimestres'],[/\bquarter\b/gi,'trimestre'],
+    [/\bper\s+day\b/gi,'por dia'],[/\bper\s+week\b/gi,'por semana'],[/\bper\s+month\b/gi,'por mês'],[/\bper\s+year\b/gi,'por ano'],
+    [/\bwithin\b/gi,'dentro de'],[/\bduring\b/gi,'durante'],
+    // Comparação / posição
+    [/\babove\b/gi,'acima de'],[/\bbelow\b/gi,'abaixo de'],
+    // Verbos 3ª pessoa e formas não cobertas pelo verbMap
+    [/\bbecomes\b/gi,'se torna'],[/\bbecome\b/gi,'se tornar'],
+    [/\breaches\b/gi,'atinge'],[/\bhits\b/gi,'atinge'],
+    [/\bwins\b/gi,'ganha'],[/\bloses\b/gi,'perde'],
+    [/\bfalls\b/gi,'cai'],[/\bdrops\b/gi,'cai'],
+    [/\bgrows\b/gi,'cresce'],[/\bexpands\b/gi,'expande'],
+    [/\bfails\b/gi,'falha'],[/\bends\b/gi,'encerra'],
+    [/\bstays\b/gi,'permanece'],[/\bstay\b/gi,'permanecer'],
+    [/\bremains\b/gi,'permanece'],[/\bremain\b/gi,'permanecer'],
+    [/\bovertakes\b/gi,'ultrapassa'],[/\bovertake\b/gi,'ultrapassar'],
+    // Substantivos comuns em mercados
+    [/\bagreement\b/gi,'acordo'],[/\bcrisis\b/gi,'crise']
   ];
-  for(const [re,rep] of rules){t=t.replace(re,rep);} 
+  for(const [re,rep] of rules){t=t.replace(re,rep);}
   // Ajustes de estruturas comuns
   t=t.replace(/^\s*Will\s+/i,'Vai ');
+  // "Does X" / "Do X" → "Vai X" (perguntas do tipo present-tense)
+  t=t.replace(/^\s*(?:Does|Do)\s+/i,'Vai ');
   t=t.replace(/\?\s*$/,'?');
   // "in 2025?" -> "em 2025?"
   t=t.replace(/\bin\s+(\d{4})\?/i,'em $1?');
@@ -161,6 +188,10 @@ function translateTitle(text){if(!text) return "";let t=String(text);
   t=t.replace(/win\s+Nobel\s+Peace\s+Prize/gi,'ganhar o Prêmio Nobel da Paz');
   // Padrao já traduzido para cessar-fogo
   t=t.replace(/\b([A-Za-zÀ-ú'`´^\-\. ]+)\s*(?:x|vs\.?|\-|e)\s*([A-Za-zÀ-ú'`´^\-\. ]+)\s+Cessar-fogo/gi,(m,a,b)=>`Cessar-fogo entre ${a.trim()} e ${b.trim()}`);
+  // Abreviações monetárias: $2B → US$ 2 bilhões, $500M → US$ 500 milhões, $100K → US$ 100 mil
+  t=t.replace(/\$(\d+(?:[.,]\d+)?)\s*[Bb]\b/g,(m,n)=>{const v=parseFloat(n.replace(',','.'));const s=isNaN(v)?n:String(v).replace('.',',');return `US$ ${s} ${v>=2?'bilhões':'bilhão'}`;});
+  t=t.replace(/\$(\d+(?:[.,]\d+)?)\s*[Mm]\b/g,(m,n)=>{const v=parseFloat(n.replace(',','.'));const s=isNaN(v)?n:String(v).replace('.',',');return `US$ ${s} ${v>=2?'milhões':'milhão'}`;});
+  t=t.replace(/\$(\d+(?:[.,]\d+)?)\s*[Kk]\b/g,(m,n)=>{const v=parseFloat(n.replace(',','.'));const s=isNaN(v)?n:String(v).replace('.',',');return `US$ ${s} mil`;});
   // Normaliza valores em dólar: $1,000,000 -> US$ 1.000.000
   t=t.replace(/\$([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?)/g,function(m,num){return 'US$ '+ num.replace(/,/g,'.')});
   // Normaliza números com vírgula: 250,000 -> 250.000
@@ -281,6 +312,34 @@ function translateTitle(text){if(!text) return "";let t=String(text);
   t=t.replace(/\bde Presidente de Ucrânia\b/gi,'de Presidente da Ucrânia');
   t=t.replace(/\bde Presidente de Estados Unidos\b/gi,'de Presidente dos Estados Unidos');
   t=t.replace(/\bde Presidente de Reino Unido\b/gi,'de Presidente do Reino Unido');
+  // Dicionário de verbos EN→PT-BR: fallback para "vai <verbo>" não traduzido
+  const verbMap={achieve:'atingir',acquire:'adquirir',add:'adicionar',adopt:'adotar',
+    announce:'anunciar',approve:'aprovar',attack:'atacar',avoid:'evitar',
+    ban:'proibir',block:'bloquear',break:'quebrar',build:'construir',
+    cancel:'cancelar',capture:'capturar',collapse:'colapsar',confirm:'confirmar',
+    conquer:'conquistar',continue:'continuar',cut:'cortar',
+    declare:'declarar',defeat:'derrotar',delay:'atrasar',deploy:'implantar',
+    die:'morrer',dismiss:'demitir',dissolve:'dissolver',drop:'cair',
+    end:'encerrar',enter:'entrar',establish:'estabelecer',exceed:'ultrapassar',
+    expand:'expandir',fail:'falhar',fall:'cair',fire:'demitir',flip:'virar',
+    gain:'ganhar',grow:'crescer',hold:'manter',impose:'impor',
+    increase:'aumentar',invade:'invadir',join:'se juntar',
+    launch:'lançar',leave:'sair',legalize:'legalizar',list:'listar',lose:'perder',
+    maintain:'manter',merge:'fundir',miss:'perder',move:'mover',
+    nationalize:'nacionalizar',negotiate:'negociar',nominate:'indicar',
+    occupy:'ocupar',pass:'aprovar',pivot:'mudar de direção',publish:'publicar',
+    raise:'elevar',reach:'atingir',recognize:'reconhecer',release:'lançar',
+    remove:'remover',replace:'substituir',resign:'renunciar',run:'concorrer',
+    sanction:'sancionar',secede:'se separar',send:'enviar',sign:'assinar',
+    split:'dividir',start:'iniciar',stop:'parar',strike:'atacar',
+    surpass:'ultrapassar',survive:'sobreviver',suspend:'suspender',
+    take:'tomar',topple:'derrubar',trigger:'acionar',use:'usar',
+    veto:'vetar',win:'ganhar',withdraw:'retirar'};
+  t=t.replace(/\bvai\s+([a-z]+)\b/g,(m,verb)=>verbMap[verb]?`vai ${verbMap[verb]}`:m);
+  // Substantivos que conflitam com verbMap (processados APÓS verbMap para preservar forma verbal)
+  t=t.replace(/\blaunched\b/gi,'lançado');
+  t=t.replace(/\blaunching\b/gi,'lançamento');
+  t=t.replace(/\blaunch\b/gi,'lançamento');
   // Limpa espaços duplos e espaço antes de "?"
   t=t.replace(/\s+\?/g,'?');
   t=t.replace(/\s{2,}/g,' ').trim();
@@ -353,8 +412,8 @@ async function build(){
     // Log de diagnóstico
     const catCount={};markets.forEach(m=>{catCount[m.cat]=(catCount[m.cat]||0)+1;});
     console.log(`[Banner] ${markets.length} mercados:`,catCount);
-    // Scroll dinâmico: ~2s por card
-    const duration=Math.max(45,markets.length*3);
+    // Scroll dinâmico: ~5s por card (lento para leitura em live)
+    const duration=Math.max(60,markets.length*5);
     document.documentElement.style.setProperty('--scroll-duration',duration+'s');
     const polymarketLogo='<a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="polymarket-logo"><div class="polymarket-logo-icon">P</div><span>Polymarket</span></a>';
     document.getElementById('track').innerHTML=polymarketLogo+[...markets,...markets].map(makeCard).join('');
@@ -366,7 +425,7 @@ async function build(){
       try{
         const markets=JSON.parse(cached);
         console.warn('[Banner] Erro na API, usando cache com',markets.length,'mercados');
-        const duration=Math.max(45,markets.length*3);
+        const duration=Math.max(60,markets.length*5);
         document.documentElement.style.setProperty('--scroll-duration',duration+'s');
         const polymarketLogo='<a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="polymarket-logo"><div class="polymarket-logo-icon">P</div><span>Polymarket</span></a>';
         document.getElementById('track').innerHTML=polymarketLogo+[...markets,...markets].map(makeCard).join('');

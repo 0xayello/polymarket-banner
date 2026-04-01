@@ -125,8 +125,8 @@ async function build(){
     // Diagnostic log
     const catCount={};markets.forEach(m=>{catCount[m.cat]=(catCount[m.cat]||0)+1;});
     console.log(`[Banner] ${markets.length} markets:`,catCount);
-    // Dynamic scroll: ~2s per card
-    const duration=Math.max(30,markets.length*2);
+    // Dynamic scroll: ~3s per card
+    const duration=Math.max(60,markets.length*5);
     document.documentElement.style.setProperty('--scroll-duration',duration+'s');
     const polymarketLogo='<a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="polymarket-logo"><div class="polymarket-logo-icon">P</div><span>Polymarket</span></a>';
     document.getElementById('track').innerHTML=polymarketLogo+[...markets,...markets].map(makeCard).join('');
@@ -138,7 +138,7 @@ async function build(){
       try{
         const markets=JSON.parse(cached);
         console.warn('[Banner] API error, using cache with',markets.length,'markets');
-        const duration=Math.max(30,markets.length*2);
+        const duration=Math.max(60,markets.length*5);
         document.documentElement.style.setProperty('--scroll-duration',duration+'s');
         const polymarketLogo='<a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="polymarket-logo"><div class="polymarket-logo-icon">P</div><span>Polymarket</span></a>';
         document.getElementById('track').innerHTML=polymarketLogo+[...markets,...markets].map(makeCard).join('');
